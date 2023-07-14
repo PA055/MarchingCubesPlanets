@@ -42,6 +42,23 @@ public class PlayerController : MonoBehaviour
         playerCamera.transform.localRotation = Quaternion.Euler(rotation.x, 0, 0);
         Quaternion localRotation = Quaternion.Euler(0f, Input.GetAxis("Mouse X") * lookSpeed, 0f);
         transform.rotation = transform.rotation * localRotation;
+
+        RaycastHit hitInfo;
+        if (Input.GetMouseButton(0)) {
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f)) {
+                if (hitInfo.point != null) {
+                    world.SetTerrainAtPoint(hitInfo.point, world.SampleTerrain(hitInfo.point) + 5f);
+                }
+            }
+        }
+
+        if (Input.GetMouseButton(2)) {
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f)) {
+                if (hitInfo.point != null) {
+                    world.SetTerrainAtPoint(hitInfo.point, world.SampleTerrain(hitInfo.point) - 5f);
+                }
+            }
+        }
     }
 
     void FixedUpdate()

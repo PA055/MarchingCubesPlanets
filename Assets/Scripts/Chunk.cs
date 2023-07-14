@@ -69,7 +69,7 @@ public class Chunk : MonoBehaviour
         for (int x = 0; x < VoxelsPerAxis; x++) {
             for (int y = 0; y < VoxelsPerAxis; y++) {
                 for (int z = 0; z < VoxelsPerAxis; z++) {
-                    terrainMap[x, y, z] = world.GetTerrainAtPoint(GetWorldSpaceOfIndex(new Vector3Int(x, y, z)));
+                    terrainMap[x, y, z] = world.GetGeneratedTerrainAtPoint(GetWorldSpaceOfIndex(new Vector3Int(x, y, z)));
                 }
             }
         }
@@ -305,9 +305,6 @@ public class Chunk : MonoBehaviour
 
         float difference = point2Sample - point1Sample;
         float pointValue = point1Sample + difference * distanceFromReference.magnitude;
-
-        if (distanceFromReference != Vector3.zero)
-            Debug.Log(pointValue);
 
         return pointValue;
     }

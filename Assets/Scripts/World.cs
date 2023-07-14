@@ -6,8 +6,8 @@ using UnityEngine;
 [ExecuteInEditMode]
 public class World : MonoBehaviour
 {
-    [Header("Generation Settings")]
-    public TerrainManager planetManager;
+    [Header("Global Generation Settings")]
+    public TerrainManager terrainManager;
     public Material material;
     public bool smoothTerrain = true;
     public bool flatShaded = false;
@@ -23,6 +23,10 @@ public class World : MonoBehaviour
     public GameObject terrainPointPrefab;
     public bool generateGizmos = true;
     public bool showChunkOutline = true;
+    
+    [Space]
+
+
     [HideInInspector]
     public bool showCube = false;
     [HideInInspector]
@@ -126,7 +130,7 @@ public class World : MonoBehaviour
         if (chunks.ContainsKey(chunkIndex)) {
             return chunks[chunkIndex].GetTerrainAtPoint(pointInChunk);
         } else
-            return GetTerrainAtPoint(point);
+            return GetGeneratedTerrainAtPoint(point);
     }
 
     public Point[] GetChunksOfPoint(Vector3 point) {
@@ -163,7 +167,15 @@ public class World : MonoBehaviour
                     // Debug.Log(new Vector3Int(xCoord, yCoord, zCoord));
                     Point pointAndChunk = new Point();
                     pointAndChunk.chunkIndex = new Vector3Int(xCoord, yCoord, zCoord);
-                    pointAndChunk.point = chunks[pointAndChunk.chunkIndex].GetLocalCoordsFromWorldCoords(point);
+                    if (chunks.ContainsKey(pointAndChunk.chunkIndex))
+                        pointAndChunk.point = chunks[pointAndChunk.chunkIndex].GetLocalCoordsFromWorldCoords(point);
+                    else {
+                        pointAndChunk.point = new Vector3(
+                            point.x - pointAndChunk.chunkIndex.x * chunkSize,
+                            point.y - pointAndChunk.chunkIndex.y * chunkSize,
+                            point.z - pointAndChunk.chunkIndex.z * chunkSize
+                        );
+                    }
                     pointsAndChunks.Add(pointAndChunk);
                 }
             }
@@ -173,8 +185,28 @@ public class World : MonoBehaviour
         return pointsAndChunks.ToArray();
     }
 
-    public float GetTerrainAtPoint(Vector3 point) {
-        return planetManager.GetTerrainAtPoint(point);
+    public void SetTerrainAtPoint(Vector3 point, float value) {
+        Point[] points = GetChunksOfPoint(point);
+        foreach (Point p in points) {
+            if (chunks.ContainsKey(p.chunkIndex)) {
+                chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int (
+                    Mathf.FloorToInt(p.point.x),
+                    Mathf.FloorToInt(p.point.y),
+                    Mathf.FloorToInt(p.point.z)
+                ), value);
+            } else {
+                GenerateChunk(p.chunkIndex);
+                chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int(
+                    Mathf.FloorToInt(p.point.x),
+                    Mathf.FloorToInt(p.point.y),
+                    Mathf.FloorToInt(p.point.z)
+                ), value);
+            }
+        }
+    }
+
+    public float GetGeneratedTerrainAtPoint(Vector3 point) {
+        return terrainManager.GetTerrainAtPoint(point);
     }
 }
 
