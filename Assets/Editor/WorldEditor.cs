@@ -11,13 +11,20 @@ public class WorldEditor : Editor {
 
         World world = (World) target;
 
-        if (GUILayout.Button((world.showGizmos ? "Hide" : "Show") + " Gizmos")) 
-            world.ToggleGizmos(!world.showGizmos);
+        if (!Application.isPlaying) {
+            if (GUILayout.Button("Regenerate Chunks Near Player")) {
+                world.ClearChunks();
+                world.GenerateChunks();
+            }
+        }
 
-        if (GUILayout.Button((world.showCube ? "Hide" : "Show") + " Cubes")) 
-            world.ToggleAllCubes(!world.showCube);
+        // if (GUILayout.Button((world.showGizmos ? "Hide" : "Show") + " Gizmos")) 
+        //     world.ToggleGizmos(!world.showGizmos);
+
+        // if (GUILayout.Button((world.showCube ? "Hide" : "Show") + " Cubes")) 
+        //     world.ToggleAllCubes(!world.showCube);
         
-        if (GUILayout.Button((world.showPoints ? "Hide" : "Show") + " Vertices")) 
-            world.ToggleAllPoints(!world.showPoints);
+        // if (GUILayout.Button((world.showPoints ? "Hide" : "Show") + " Vertices")) 
+        //     world.ToggleAllPoints(!world.showPoints);
     }
 }

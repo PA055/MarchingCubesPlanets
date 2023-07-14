@@ -38,13 +38,13 @@ public class TerrainPointEditor : Editor {
     }
 
     public override void OnInspectorGUI() {
-        serializedObject.Update();
+        // serializedObject.Update();
 
-        DrawGUI();
+        // DrawGUI();
 
-        serializedObject.ApplyModifiedProperties();
+        // serializedObject.ApplyModifiedProperties();
 
-        m_targets.ForEach( obj => obj.Set() );
+        // m_targets.ForEach( obj => obj.Set() );
 
         TerrainPoint terrainPoint = (TerrainPoint)target;
 
@@ -57,9 +57,9 @@ public class TerrainPointEditor : Editor {
         //     terrainPoint.chunk.BuildMesh();
         // }
 
-        if (GUILayout.Button((terrainPoint.showCube ? "Hide" : "Show") + " Cube"))
-            terrainPoint.ShowCube(!terrainPoint.showCube);
-        if (GUILayout.Button((terrainPoint.showPoints ? "Hide" : "Show") + " Vertices"))
-            terrainPoint.ShowPoints(!terrainPoint.showPoints);
+        // if (GUILayout.Button((terrainPoint.showCube ? "Hide" : "Show") + " Cube"))
+        //     terrainPoint.ShowCube(!terrainPoint.showCube);
+        // if (GUILayout.Button((terrainPoint.showPoints ? "Hide" : "Show") + " Vertices"))
+        //     terrainPoint.ShowPoints(!terrainPoint.showPoints);
     }
 }

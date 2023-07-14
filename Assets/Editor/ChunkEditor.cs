@@ -4,8 +4,9 @@ using UnityEngine;
 using UnityEditor;
 
 [CustomEditor(typeof(Chunk))]
+[CanEditMultipleObjects]
 public class ChunkEditor : Editor {
-    public float threshold = Constants.TERRAIN_SURFACE;
+    public float threshold = 0.5f;
 
     public override void OnInspectorGUI() {
         DrawDefaultInspector();
@@ -23,22 +24,22 @@ public class ChunkEditor : Editor {
         // if (GUILayout.Button("Clear Mesh"))
         //     chunk.ClearMesh();
 
-        if (GUILayout.Button((chunk.showingCubes ? "Hide" : "Show") + " All Cubes"))
-            chunk.ToggleAllCubes(!chunk.showingCubes);
+        // if (GUILayout.Button((chunk.showingCubes ? "Hide" : "Show") + " All Cubes"))
+        //     chunk.ToggleAllCubes(!chunk.showingCubes);
 
-        if (GUILayout.Button((chunk.showingCubes ? "Hide" : "Show") + " All Vertices"))
-            chunk.ToggleAllVertices(!chunk.showingVertices);
+        // if (GUILayout.Button((chunk.showingCubes ? "Hide" : "Show") + " All Vertices"))
+        //     chunk.ToggleAllVertices(!chunk.showingVertices);
 
-        if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " All Gizmos"))
-            chunk.ToggleGizmos(!chunk.showGizmos);
+        // if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " All Gizmos"))
+        //     chunk.ToggleGizmos(!chunk.showGizmos);
 
-        threshold = EditorGUILayout.FloatField("Threshold", threshold);
+        // threshold = EditorGUILayout.FloatField("Threshold", threshold);
 
-        if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " Gizmos Below Threshold"))
-            chunk.ToggleGizmosBelowThreshold(!chunk.showGizmos, threshold);
+        // if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " Gizmos Below Threshold"))
+        //     chunk.ToggleGizmosBelowThreshold(!chunk.showGizmos, threshold);
 
-        if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " Gizmos Above Threshold"))
-            chunk.ToggleGizmosAboveThreshold(!chunk.showGizmos, threshold);
+        // if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " Gizmos Above Threshold"))
+        //     chunk.ToggleGizmosAboveThreshold(!chunk.showGizmos, threshold);
     }
 }
 

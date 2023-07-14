@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[ExecuteInEditMode]
 public class Chunk : MonoBehaviour
 {
     [Range(1, 8)]
@@ -26,10 +27,12 @@ public class Chunk : MonoBehaviour
     public bool showingVertices = false;
     [HideInInspector]
     public bool showGizmos = false;
+    [HideInInspector]
+    public bool isGenerated = false;
 
     public int VoxelsPerAxis { 
         get {
-            return Constants.CHUNK_SIZE * Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail] + 1;
+            return world.chunkSize * Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail] + 1;
         }
     }
 
@@ -37,6 +40,11 @@ public class Chunk : MonoBehaviour
         get {
             return 1.0f / Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail];
         }
+    }
+
+    void OnDrawGizmos() {
+        if (world.showChunkOutline)
+            Gizmos.DrawWireCube(transform.position + Vector3.one * (world.chunkSize / 2f), Vector3.one * world.chunkSize);
     }
 
     public void Init(World world, Vector3Int chunkIndex, Material material, int LOD) {
@@ -94,6 +102,7 @@ public class Chunk : MonoBehaviour
         }
         MarchingCubes();
         BuildMesh();
+        isGenerated = true;
     }
 
     void MarchingCubes() {
@@ -110,10 +119,7 @@ public class Chunk : MonoBehaviour
         float[] cube = new float[8];
         for (var i = 0; i < 8; i++) {
             Vector3 corner = GetWorldSpaceOfIndex(index + Constants.CornerTable[i]);
-            if (corner.x > Constants.WORLD_WIDTH || corner.y > Constants.WORLD_WIDTH || corner.z > Constants.WORLD_WIDTH)
-                cube[i] = world.GetTerrainAtPoint(corner);
-            else
-                cube[i] = world.SampleTerrain(corner);
+            cube[i] = world.SampleTerrain(corner);
         }
 
         int configIndex = GetCubeConfig(cube);
@@ -139,9 +145,9 @@ public class Chunk : MonoBehaviour
                     float difference = vert2Sample - vert1Sample;
 
                     if (difference == 0)
-                        difference = Constants.TERRAIN_SURFACE;
+                        difference = world.surfaceDensityValue;
                     else
-                        difference = (Constants.TERRAIN_SURFACE - vert1Sample) / difference;
+                        difference = (world.surfaceDensityValue - vert1Sample) / difference;
 
                     vertPos = vert1 + ((vert2 - vert1) * difference);
                 } else {
@@ -163,7 +169,7 @@ public class Chunk : MonoBehaviour
     int GetCubeConfig(float[] cube) {
         int configIndex = 0;
         for (int i = 0; i < 8; i++) {
-            if (cube[i] > Constants.TERRAIN_SURFACE) {
+            if (cube[i] > world.surfaceDensityValue) {
                 configIndex |= 1 << i;
             }
         }
@@ -237,17 +243,17 @@ public class Chunk : MonoBehaviour
 
     public Vector3 GetWorldSpaceOfIndex(Vector3Int index) {
         return new Vector3(
-            chunkIndex.x * Constants.CHUNK_SIZE + index.x * VoxelWidth,
-            chunkIndex.y * Constants.CHUNK_SIZE + index.y * VoxelWidth,
-            chunkIndex.z * Constants.CHUNK_SIZE + index.z * VoxelWidth
+            chunkIndex.x * world.chunkSize + index.x * VoxelWidth,
+            chunkIndex.y * world.chunkSize + index.y * VoxelWidth,
+            chunkIndex.z * world.chunkSize + index.z * VoxelWidth
         );
     }
     
     public Vector3 GetWorldSpaceOfPoint(Vector3 point) {
         return new Vector3(
-            chunkIndex.x * Constants.CHUNK_SIZE + point.x,
-            chunkIndex.y * Constants.CHUNK_SIZE + point.y,
-            chunkIndex.z * Constants.CHUNK_SIZE + point.z
+            chunkIndex.x * world.chunkSize + point.x,
+            chunkIndex.y * world.chunkSize + point.y,
+            chunkIndex.z * world.chunkSize + point.z
         );
     }
 
@@ -257,9 +263,9 @@ public class Chunk : MonoBehaviour
 
     public Vector3 GetLocalCoordsFromWorldCoords(Vector3 point) {
         return new Vector3(
-            point.x - chunkIndex.x * Constants.CHUNK_SIZE,
-            point.y - chunkIndex.y * Constants.CHUNK_SIZE,
-            point.z - chunkIndex.z * Constants.CHUNK_SIZE
+            point.x - chunkIndex.x * world.chunkSize,
+            point.y - chunkIndex.y * world.chunkSize,
+            point.z - chunkIndex.z * world.chunkSize
         );
     }
 
@@ -283,6 +289,9 @@ public class Chunk : MonoBehaviour
         Vector3 referencePoint1 = (Vector3) PointToIndex(point);
         Vector3 referencePoint2 = (Vector3) PointToIndex(point);
         Vector3 distanceFromReference = point - referencePoint1;
+
+        if (distanceFromReference == Vector3.zero)
+            return GetTerrainAtIndex(PointToIndex(point));
 
         if (distanceFromReference.x > 0) 
             referencePoint2.x++;

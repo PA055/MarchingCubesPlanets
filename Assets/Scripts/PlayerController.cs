@@ -6,6 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(CapsuleCollider))]
 public class PlayerController : MonoBehaviour
 {
+    public World world;
     public Camera playerCamera;
     public Vector3 planetCenter;
     public bool alignToPlanet = true;
@@ -78,15 +79,16 @@ public class PlayerController : MonoBehaviour
 
             if (Input.GetButton("Jump") && canJump)
             {
-               r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
+                r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
             }
         }
-
-        grounded = false;
     }
 
-    void OnCollisionStay()
-    {
+    void OnCollisionStay(Collision other) {
         grounded = true;
+    }
+
+    void OnCollisionExit(Collision other) {
+        grounded = false;
     }
 }

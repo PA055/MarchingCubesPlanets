@@ -281,8 +281,13 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 189e9cfaa3c917e4f9203a93f1df80d9, type: 2}
   smoothTerrain: 1
   flatShaded: 0
+  player: {fileID: 1307075155}
+  halfRenderDistanceInChunks: 2
+  chunkSize: 16
+  surfaceDensityValue: 0.5
   terrainPointPrefab: {fileID: 2877102085962613403, guid: 6f8a305d02eccca4dae76e7cfddffc21, type: 3}
-  generateGizmos: 1
+  generateGizmos: 0
+  showChunkOutline: 1
   showCube: 0
   showPoints: 0
   showGizmos: 0
@@ -313,7 +318,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4d205cfec8927e47b92add4e7fcc199, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  planetRadius: 3
+  noiseMode: 2
+  planetRadius: 10
 --- !u!1 &979421276
 GameObject:
   m_ObjectHideFlags: 0
@@ -437,7 +443,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1307075156
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -450,6 +456,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aa34e1b5860c7d4b8c0e41b971739fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  world: {fileID: 364525280}
   playerCamera: {fileID: 18915910}
   planetCenter: {x: 0, y: 0, z: 0}
   alignToPlanet: 1

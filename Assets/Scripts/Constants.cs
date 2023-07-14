@@ -4,12 +4,6 @@ using UnityEngine;
 
 public static class Constants
 {
-    public static readonly int CHUNK_SIZE = 4;
-    public static readonly int WORLD_SIZE_IN_CHUNKS = 2;
-    public static readonly float TERRAIN_SURFACE = 0.5f;
-	public static readonly int WORLD_WIDTH = CHUNK_SIZE * WORLD_SIZE_IN_CHUNKS;
-	public static readonly Vector3 CENTER = new Vector3(WORLD_WIDTH / 2f, WORLD_WIDTH / 2f, WORLD_WIDTH / 2f);
-
 	public static readonly int[] VoxelsPerUnitAtLODValue = new int[] {
 		-1, 1, 2, 4, 6, 8, 10, 12, 14, 16
 	};
