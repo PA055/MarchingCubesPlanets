@@ -30,6 +30,12 @@ public class Chunk : MonoBehaviour
     [HideInInspector]
     public bool isGenerated = false;
 
+    public int VoxelsPerUnit {
+        get {
+            return Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail];
+        }
+    }
+
     public int VoxelsPerAxis { 
         get {
             return world.chunkSize * Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail] + 1;

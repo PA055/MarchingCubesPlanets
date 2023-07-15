@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
     public World world;
     public Camera playerCamera;
     public Vector3 planetCenter;
+    public float brushSize = 2f; 
     public bool alignToPlanet = true;
     public float lookXLimit = 60.0f;
     public float lookSpeed = 2.0f;
@@ -46,17 +47,13 @@ public class PlayerController : MonoBehaviour
         RaycastHit hitInfo;
         if (Input.GetMouseButton(0)) {
             if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f)) {
-                if (hitInfo.point != null) {
-                    world.SetTerrainAtPoint(hitInfo.point, world.SampleTerrain(hitInfo.point) + 5f);
-                }
+                DrawSphere(hitInfo.point, brushSize, true);
             }
         }
 
-        if (Input.GetMouseButton(2)) {
+        if (Input.GetMouseButton(1)) {
             if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f)) {
-                if (hitInfo.point != null) {
-                    world.SetTerrainAtPoint(hitInfo.point, world.SampleTerrain(hitInfo.point) - 5f);
-                }
+                DrawSphere(hitInfo.point, brushSize, false);
             }
         }
     }
@@ -107,5 +104,34 @@ public class PlayerController : MonoBehaviour
 
     void OnCollisionExit(Collision other) {
         grounded = false;
+    }
+
+    void DrawSphere(Vector3 originPoint, float radius, bool addTerrain) {
+        Camera.main.gameObject.GetComponent<TerraformingCamera>()._hitPoint = originPoint;
+        List<Point> points = new List<Point>();
+
+        for (float x = originPoint.x - radius / 2f; x < originPoint.x + radius / 2f; x += 1) {
+            for (float y = originPoint.y - radius / 2f; y < originPoint.y + radius / 2f; y += 1) {
+                for (float z = originPoint.z - radius / 2f; z < originPoint.z + radius / 2f; z += 1) {
+                    Vector3 point = new Vector3(x, y, z);
+                    float dstToOrigin = (point - originPoint).magnitude;
+                    float pointValue = world.SampleTerrain(point);
+                    if (addTerrain)
+                        pointValue -= dstToOrigin;
+                    else
+                        pointValue += dstToOrigin;
+                    Point[] pointPoints = world.SetTerrainAtPoint(point, pointValue);
+                    foreach (Point p in pointPoints) {
+                        if (!points.Contains(p))
+                            points.Add(p);
+                    }
+                }
+            }
+        }
+
+        foreach (Point p in points) {
+            Debug.Log(p.chunkIndex);
+            world.chunks[p.chunkIndex].RegenerateMesh();
+        }
     }
 }

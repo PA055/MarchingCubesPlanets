@@ -185,24 +185,20 @@ public class World : MonoBehaviour
         return pointsAndChunks.ToArray();
     }
 
-    public void SetTerrainAtPoint(Vector3 point, float value) {
+    public Point[] SetTerrainAtPoint(Vector3 point, float value) {
         Point[] points = GetChunksOfPoint(point);
         foreach (Point p in points) {
-            if (chunks.ContainsKey(p.chunkIndex)) {
-                chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int (
-                    Mathf.FloorToInt(p.point.x),
-                    Mathf.FloorToInt(p.point.y),
-                    Mathf.FloorToInt(p.point.z)
-                ), value);
-            } else {
+            if (!chunks.ContainsKey(p.chunkIndex)) 
                 GenerateChunk(p.chunkIndex);
-                chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int(
-                    Mathf.FloorToInt(p.point.x),
-                    Mathf.FloorToInt(p.point.y),
-                    Mathf.FloorToInt(p.point.z)
-                ), value);
-            }
+            
+            chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int(
+                Mathf.FloorToInt(p.point.x * chunks[p.chunkIndex].VoxelsPerUnit),
+                Mathf.FloorToInt(p.point.y * chunks[p.chunkIndex].VoxelsPerUnit),
+                Mathf.FloorToInt(p.point.z * chunks[p.chunkIndex].VoxelsPerUnit)
+            ), value);
         }
+
+        return points;
     }
 
     public float GetGeneratedTerrainAtPoint(Vector3 point) {

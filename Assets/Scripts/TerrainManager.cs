@@ -8,6 +8,7 @@ public class TerrainManager : MonoBehaviour
 {
     public NoiseMode noiseMode;
     public int seed = 0;
+    [ConditionalShow(nameof(noiseMode), 0)]
     public float planetRadius;
 
     public float GetNoiseAtPoint(Vector3 point) {
