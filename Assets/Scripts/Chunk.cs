@@ -20,6 +20,10 @@ public class Chunk : MonoBehaviour
     List<int> triangles = new List<int>();
     List<GameObject> terrainPoints = new List<GameObject>();
 
+    ComputeShader marchingCubesShader;
+    ComputeBuffer triBuffer;
+    ComputeBuffer densityMapBuffer;
+
     int oldLOD;
     float[,,] terrainMap;
     [HideInInspector]
@@ -54,10 +58,11 @@ public class Chunk : MonoBehaviour
             Gizmos.DrawWireCube(transform.position + Vector3.one * (world.chunkSize / 2f), Vector3.one * world.chunkSize);
     }
 
-    public void Init(World world, Vector3Int chunkIndex, Material material, int LOD) {
+    public void Init(World world, Vector3Int chunkIndex, Material material, int LOD, ComputeShader marchingCubesShader) {
         this.world = world;
         this.chunkIndex = chunkIndex;
         this.LevelOfDetail = LOD;
+        this.marchingCubesShader = marchingCubesShader;
 
         this.meshFilter = gameObject.GetComponent<MeshFilter>();
         this.meshCollider = gameObject.GetComponent<MeshCollider>();
@@ -68,6 +73,25 @@ public class Chunk : MonoBehaviour
         PopulateTerrainMap();
         if (world.generateGizmos)
             DrawWidgets();
+    }
+
+    void CreateBuffers() {
+        int numVoxels = VoxelsPerAxis * VoxelsPerAxis * VoxelsPerAxis;
+        int maxTriangleCount = numVoxels * 5;
+
+        triBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
+        densityMapBuffer = new ComputeBuffer(numVoxels, sizeof(float), ComputeBufferType.Structured);
+    }
+
+    void ReleaseBuffers() {
+        if (triBuffer != null)
+            triBuffer.Release();
+        if (densityMapBuffer != null)
+            densityMapBuffer.Release();
+    }
+
+    void OnDestroy() {
+        ReleaseBuffers();
     }
 
     public void PopulateTerrainMap() {
@@ -107,22 +131,47 @@ public class Chunk : MonoBehaviour
             PopulateTerrainMap();
             DrawWidgets();
         }
-        MarchingCubes();
+        CPUMarchingCubes();
         BuildMesh();
         isGenerated = true;
     }
 
-    void MarchingCubes() {
+    void GPUMarchingCubes() {
         for (int x = 0; x < VoxelsPerAxis; x++) {
             for (int y = 0; y < VoxelsPerAxis; y++) {
                 for (int z = 0; z < VoxelsPerAxis; z++) {
-                    MarchCube(new Vector3Int(x, y, z));
+                    GPUMarchCube(new Vector3Int(x, y, z));
                 }
             }
         }
     }
 
-    public void MarchCube(Vector3Int index) {
+    void CPUMarchingCubes() {
+        for (int x = 0; x < VoxelsPerAxis; x++) {
+            for (int y = 0; y < VoxelsPerAxis; y++) {
+                for (int z = 0; z < VoxelsPerAxis; z++) {
+                    CPUMarchCube(new Vector3Int(x, y, z));
+                }
+            }
+        }
+    }
+
+    public void GPUMarchCube(Vector3Int index) {
+        int marchingCubesKernel = marchingCubesShader.FindKernel("MarchCubes");
+
+        marchingCubesShader.SetInt("NumPointsPerAxis", VoxelsPerAxis);
+        marchingCubesShader.SetFloat("isoLevel", world.surfaceDensityValue);
+        marchingCubesShader.SetBool("smoothTerrain", world.smoothTerrain);
+        triBuffer.SetCounterValue(0);
+        marchingCubesShader.SetBuffer(marchingCubesKernel, "triangles", triBuffer);
+        marchingCubesShader.SetBuffer(marchingCubesKernel, "densityMap", densityMapBuffer);
+
+        marchingCubesShader.Dispatch(marchingCubesKernel, Mathf.CeilToInt(VoxelsPerAxis / 8), Mathf.CeilToInt(VoxelsPerAxis / 8), Mathf.CeilToInt(VoxelsPerAxis / 8));
+        
+    }
+
+
+    public void CPUMarchCube(Vector3Int index) {
         float[] cube = new float[8];
         for (var i = 0; i < 8; i++) {
             Vector3 corner = GetWorldSpaceOfIndex(index + Constants.CornerTable[i]);

@@ -11,6 +11,7 @@ public class World : MonoBehaviour
     public Material material;
     public bool smoothTerrain = true;
     public bool flatShaded = false;
+    public bool useComputeShader;
 
     [Header("Chunk Generation Settings")]
     public GameObject player;
@@ -18,6 +19,8 @@ public class World : MonoBehaviour
     public int chunkSize;
     public float surfaceDensityValue;
 
+    [Header("Compute Shaders")]
+    ComputeShader marchingCubesShader;
 
     [Header("Debug Settings")]
     public GameObject terrainPointPrefab;
@@ -96,7 +99,7 @@ public class World : MonoBehaviour
         chunkHolder.transform.position = chunkCoord * chunkSize;
         chunkHolder.AddComponent<Chunk>();
         Chunk chunk = chunkHolder.GetComponent<Chunk>();
-        chunk.Init(this, chunkCoord, material, 1);
+        chunk.Init(this, chunkCoord, material, 1, marchingCubesShader);
         chunks.Add(chunkCoord, chunk);
         return chunk;
     }
