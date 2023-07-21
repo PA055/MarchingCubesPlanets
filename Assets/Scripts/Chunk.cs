@@ -7,6 +7,7 @@ public class Chunk : MonoBehaviour
 {
     [Range(1, 8)]
     public int LevelOfDetail = 1;
+    public bool showBorder = false;
     [HideInInspector]
     public World world;
     [HideInInspector]
@@ -49,7 +50,7 @@ public class Chunk : MonoBehaviour
     }
 
     void OnDrawGizmos() {
-        if (world.showChunkOutline)
+        if (showBorder || world.showChunkOutline)
             Gizmos.DrawWireCube(transform.position + Vector3.one * (world.chunkSize / 2f), Vector3.one * world.chunkSize);
     }
 
@@ -81,7 +82,7 @@ public class Chunk : MonoBehaviour
         }
     }
 
-    void DrawWidgets() {
+    public void DrawWidgets() {
         for (int i = 0; i < terrainPoints.Count; i++) {
             DestroyImmediate(terrainPoints[i]);
         }
@@ -126,6 +127,7 @@ public class Chunk : MonoBehaviour
         for (var i = 0; i < 8; i++) {
             Vector3 corner = GetWorldSpaceOfIndex(index + Constants.CornerTable[i]);
             cube[i] = world.SampleTerrain(corner);
+            cube[i] = Mathf.Clamp(cube[i], -100000, 100000);
         }
 
         int configIndex = GetCubeConfig(cube);
@@ -175,7 +177,7 @@ public class Chunk : MonoBehaviour
     int GetCubeConfig(float[] cube) {
         int configIndex = 0;
         for (int i = 0; i < 8; i++) {
-            if (cube[i] > world.surfaceDensityValue) {
+            if (cube[i] < world.surfaceDensityValue) {
                 configIndex |= 1 << i;
             }
         }

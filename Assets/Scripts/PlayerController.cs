@@ -6,6 +6,8 @@ using UnityEngine;
 [RequireComponent(typeof(CapsuleCollider))]
 public class PlayerController : MonoBehaviour
 {
+    public PlayerMode playerMode;
+
     public World world;
     public Camera playerCamera;
     public Vector3 planetCenter;
@@ -25,6 +27,9 @@ public class PlayerController : MonoBehaviour
 
     void Awake()
     {
+        if (playerMode == PlayerMode.Static)
+            return;
+
         r = GetComponent<Rigidbody>();
         r.freezeRotation = true;
         r.useGravity = false;
@@ -35,8 +40,10 @@ public class PlayerController : MonoBehaviour
         Cursor.visible = false;
     }
 
-    void Update()
-    {
+    void Update() {
+        if (playerMode == PlayerMode.Static)
+            return;
+
         // Player and Camera rotation
         rotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
         rotation.x = Mathf.Clamp(rotation.x, -lookXLimit, lookXLimit);
@@ -56,44 +63,96 @@ public class PlayerController : MonoBehaviour
                 DrawSphere(hitInfo.point, brushSize, false);
             }
         }
+
+        RaycastHit hit;
+        if (world.SampleTerrain(transform.position) > world.surfaceDensityValue) {
+            if (Physics.Raycast(transform.position, transform.up, out hit, 100f, LayerMask.NameToLayer("Terrain"))) {
+                transform.position = hit.point;
+            }
+        }
     }
 
     void FixedUpdate()
     {
+        if (playerMode == PlayerMode.Static)
+            return;
 
-        Vector3 toCenter = planetCenter - transform.position;
-        toCenter.Normalize();
+        if (playerMode == PlayerMode.Planet) {
+            Vector3 toCenter = planetCenter - transform.position;
+            toCenter.Normalize();
 
-        r.AddForce(toCenter * gravity, ForceMode.Acceleration);
+            r.AddForce(toCenter * gravity, ForceMode.Acceleration);
 
-        if (alignToPlanet)
-        {
-            Quaternion q = Quaternion.FromToRotation(transform.up, -toCenter);
-            q = q * transform.rotation;
-            transform.rotation = Quaternion.Slerp(transform.rotation, q, 1);
+            if (alignToPlanet) {
+                Quaternion q = Quaternion.FromToRotation(transform.up, -toCenter);
+                q = q * transform.rotation;
+                transform.rotation = Quaternion.Slerp(transform.rotation, q, 1);
+            }
+
+            if (grounded) {
+                // Calculate how fast we should be moving
+                Vector3 forwardDir = Vector3.Cross(transform.up, -playerCamera.transform.right).normalized;
+                Vector3 rightDir = Vector3.Cross(transform.up, playerCamera.transform.forward).normalized;
+                Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
+
+                Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+                velocity.y = 0;
+                velocity = transform.TransformDirection(velocity);
+                Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
+                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+                velocityChange.y = 0;
+                velocityChange = transform.TransformDirection(velocityChange);
+
+                r.AddForce(velocityChange, ForceMode.VelocityChange);
+
+                if (Input.GetButton("Jump") && canJump)
+                {
+                    r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
+                }
+            }
         }
 
-        if (grounded)
-        {
-            // Calculate how fast we should be moving
-            Vector3 forwardDir = Vector3.Cross(transform.up, -playerCamera.transform.right).normalized;
-            Vector3 rightDir = Vector3.Cross(transform.up, playerCamera.transform.forward).normalized;
-            Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
+        if (playerMode == PlayerMode.Plane) {
+            Vector3 forwardDir = playerCamera.transform.forward.normalized;
+            Vector3 rightDir = playerCamera.transform.right.normalized;
+            Vector3 upDir = playerCamera.transform.up.normalized;
+            Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal") + upDir * Input.GetAxis("Elevation")) * speed;
 
             Vector3 velocity = transform.InverseTransformDirection(r.velocity);
-            velocity.y = 0;
             velocity = transform.TransformDirection(velocity);
             Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
             velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+            velocityChange.y = Mathf.Clamp(velocityChange.y, -maxVelocityChange, maxVelocityChange);
             velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-            velocityChange.y = 0;
             velocityChange = transform.TransformDirection(velocityChange);
 
             r.AddForce(velocityChange, ForceMode.VelocityChange);
+        }
+        
+        if (playerMode == PlayerMode.Normal) {
+            r.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
 
-            if (Input.GetButton("Jump") && canJump)
-            {
-                r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
+            if (grounded) {
+                Vector3 forwardDir = playerCamera.transform.forward.normalized;
+                Vector3 rightDir = playerCamera.transform.right.normalized;
+                Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
+
+                Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+                velocity.y = 0;
+                velocity = transform.TransformDirection(velocity);
+                Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
+                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+                velocityChange.y = 0;
+                velocityChange = transform.TransformDirection(velocityChange);
+
+                r.AddForce(velocityChange, ForceMode.VelocityChange);
+
+                if (Input.GetButton("Jump") && canJump)
+                {
+                    r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
+                }
             }
         }
     }
@@ -107,31 +166,42 @@ public class PlayerController : MonoBehaviour
     }
 
     void DrawSphere(Vector3 originPoint, float radius, bool addTerrain) {
-        Camera.main.gameObject.GetComponent<TerraformingCamera>()._hitPoint = originPoint;
-        List<Point> points = new List<Point>();
+        List<Vector3Int> chunksToReload = new List<Vector3Int>();
 
-        for (float x = originPoint.x - radius / 2f; x < originPoint.x + radius / 2f; x += 1) {
-            for (float y = originPoint.y - radius / 2f; y < originPoint.y + radius / 2f; y += 1) {
-                for (float z = originPoint.z - radius / 2f; z < originPoint.z + radius / 2f; z += 1) {
+        for (float x = originPoint.x - radius; x < originPoint.x + radius; x += 1) {
+            for (float y = originPoint.y - radius; y < originPoint.y + radius; y += 1) {
+                for (float z = originPoint.z - radius; z < originPoint.z + radius; z += 1) {
                     Vector3 point = new Vector3(x, y, z);
                     float dstToOrigin = (point - originPoint).magnitude;
-                    float pointValue = world.SampleTerrain(point);
-                    if (addTerrain)
-                        pointValue -= dstToOrigin;
-                    else
-                        pointValue += dstToOrigin;
-                    Point[] pointPoints = world.SetTerrainAtPoint(point, pointValue);
-                    foreach (Point p in pointPoints) {
-                        if (!points.Contains(p))
-                            points.Add(p);
+                    if (dstToOrigin <= radius) {
+                    // if (true) {
+                        float pointValue = world.SampleTerrain(point);
+                        if (addTerrain)
+                            pointValue += (radius * radius) / (point - originPoint).sqrMagnitude;
+                        else
+                            pointValue -= (radius * radius) / (point - originPoint).sqrMagnitude;
+                        if (float.IsFinite(pointValue)) {
+                            Vector3Int[] chunks = world.SetTerrainAtPoint(point, pointValue);
+                            foreach (Vector3Int i in chunks) {
+                                if (!chunksToReload.Contains(i))
+                                    chunksToReload.Add(i);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        foreach (Point p in points) {
-            Debug.Log(p.chunkIndex);
-            world.chunks[p.chunkIndex].RegenerateMesh();
+        foreach (Vector3Int i in chunksToReload) {
+            // Debug.Log("Final: " + i.ToString());
+            world.chunks[i].RegenerateMesh();
         }
     }
+}
+
+public enum PlayerMode {
+    Planet,
+    Normal,
+    Plane,
+    Static
 }

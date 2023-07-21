@@ -88,6 +88,7 @@ public class World : MonoBehaviour
 
     Chunk GenerateChunk(Vector3Int chunkCoord) {
         GameObject chunkHolder = new GameObject("Chunk at x: " + chunkCoord.x + ", y: " + chunkCoord.y + ", z: " + chunkCoord.z);
+        chunkHolder.layer = LayerMask.NameToLayer("Terrain");
         chunkHolder.transform.parent = transform;
         chunkHolder.AddComponent<MeshFilter>();
         chunkHolder.AddComponent<MeshRenderer>();
@@ -140,7 +141,7 @@ public class World : MonoBehaviour
         List<int> chunkYCoords = new List<int>();
         List<int> chunkZCoords = new List<int>();
 
-        if (Mathf.FloorToInt(point.x % chunkSize) == 0) {
+        if ((Mathf.FloorToInt(point.x % chunkSize) == 0 && point.x >= 0) || (Mathf.FloorToInt(point.x % chunkSize) == 0 && point.x < 0)) {
             chunkXCoords.Add(Mathf.FloorToInt(point.x / chunkSize));
             chunkXCoords.Add(Mathf.FloorToInt(point.x / chunkSize) - 1);
         } else {
@@ -164,9 +165,9 @@ public class World : MonoBehaviour
         foreach (int xCoord in chunkXCoords) {
             foreach (int yCoord in chunkYCoords) {
                 foreach (int zCoord in chunkZCoords) {
-                    // Debug.Log(new Vector3Int(xCoord, yCoord, zCoord));
                     Point pointAndChunk = new Point();
                     pointAndChunk.chunkIndex = new Vector3Int(xCoord, yCoord, zCoord);
+                    // Debug.Log(pointAndChunk.chunkIndex);
                     if (chunks.ContainsKey(pointAndChunk.chunkIndex))
                         pointAndChunk.point = chunks[pointAndChunk.chunkIndex].GetLocalCoordsFromWorldCoords(point);
                     else {
@@ -185,8 +186,9 @@ public class World : MonoBehaviour
         return pointsAndChunks.ToArray();
     }
 
-    public Point[] SetTerrainAtPoint(Vector3 point, float value) {
+    public Vector3Int[] SetTerrainAtPoint(Vector3 point, float value) {
         Point[] points = GetChunksOfPoint(point);
+        List<Vector3Int> chunkIndexes = new List<Vector3Int>();
         foreach (Point p in points) {
             if (!chunks.ContainsKey(p.chunkIndex)) 
                 GenerateChunk(p.chunkIndex);
@@ -196,9 +198,11 @@ public class World : MonoBehaviour
                 Mathf.FloorToInt(p.point.y * chunks[p.chunkIndex].VoxelsPerUnit),
                 Mathf.FloorToInt(p.point.z * chunks[p.chunkIndex].VoxelsPerUnit)
             ), value);
+
+            chunkIndexes.Add(p.chunkIndex);
         }
 
-        return points;
+        return chunkIndexes.ToArray();
     }
 
     public float GetGeneratedTerrainAtPoint(Vector3 point) {
@@ -209,4 +213,23 @@ public class World : MonoBehaviour
 public struct Point {
     public Vector3Int chunkIndex;
     public Vector3 point;
+
+    public override bool Equals(object obj) {
+        if (obj == null || GetType() != obj.GetType())
+        {
+            return false;
+        }
+
+        Point other = (Point) obj;
+        return chunkIndex == other.chunkIndex && point == other.point;
+    }
+    
+    public override int GetHashCode() {
+        return chunkIndex.GetHashCode() * point.GetHashCode();
+    }
+
+    public override string ToString()
+    {
+        return "Point " + point.ToString() + " in Chunk at Index " + chunkIndex.ToString();
+    }
 }

@@ -22,7 +22,9 @@ public class TerrainPoint : MonoBehaviour
             }
             set { 
                 if (value != terrainValue) {
-                    chunk.SetTerrainAtIndex(pointIndex, value);
+                    chunk.world.SetTerrainAtPoint(chunk.GetWorldSpaceOfIndex(pointIndex), value);
+                    if (value > 100000)
+                        value = 100000;
                     gameObject.GetComponent<Renderer>().material.color = new Color(value, value, value, 0.5f);
                 }
             }
@@ -39,7 +41,8 @@ public class TerrainPoint : MonoBehaviour
     public void init(Chunk chunk, Vector3Int pointIndex) {
         this.chunk = chunk;
         this.pointIndex = pointIndex;
-        gameObject.GetComponent<Renderer>().material.color = new Color(terrainValue, terrainValue, terrainValue, 0.5f);
+        float tv = terrainValue > 100000 ? 100000 : terrainValue;
+        gameObject.GetComponent<Renderer>().material.color = new Color(tv, tv, tv, 0.5f);
         gameObject.SetActive(chunk.showGizmos);
     }
 
@@ -51,49 +54,43 @@ public class TerrainPoint : MonoBehaviour
         terrainValue = s_terrainValue;
     }
 
-    // void OnDrawGizmos() {
-    //     transform.localPosition = chunk.GetRelativePositionOfIndex(pointIndex);
-    //     if (showCube) {
-    //         if (chunk.GetWorldSpaceOfIndex(pointIndex).x >= Constants.WORLD_WIDTH || 
-    //             chunk.GetWorldSpaceOfIndex(pointIndex).y >= Constants.WORLD_WIDTH ||
-    //             chunk.GetWorldSpaceOfIndex(pointIndex).z >= Constants.WORLD_WIDTH) {
-    //                 Gizmos.color = Color.red;
-    //                 Gizmos.DrawWireCube(gameObject.transform.position +                                       // POSITION
-    //                         new Vector3(chunk.VoxelWidth / 2, chunk.VoxelWidth / 2, chunk.VoxelWidth / 2),    // CENTER OFFSET
-    //                         new Vector3(chunk.VoxelWidth, chunk.VoxelWidth, chunk.VoxelWidth));               // SIZE
-    //                 return;
-    //         }
-    //         Gizmos.DrawWireCube(gameObject.transform.position +                                               // POSITION
-    //                         new Vector3(chunk.VoxelWidth / 2, chunk.VoxelWidth / 2, chunk.VoxelWidth / 2),    // CENTER OFFSET
-    //                         new Vector3(chunk.VoxelWidth, chunk.VoxelWidth, chunk.VoxelWidth));               // SIZE
-    //     }
-    //     if (showPoints) {
-    //         for (int i = 0; i < 12; i++) {
-    //             Vector3 corner1 = chunk.GetWorldSpaceOfIndex(pointIndex + Constants.CornerTable[Constants.EdgeIndexes[i, 0]]);
-    //             Vector3 corner2 = chunk.GetWorldSpaceOfIndex(pointIndex + Constants.CornerTable[Constants.EdgeIndexes[i, 1]]);
+    void OnDrawGizmos() {
+        transform.localPosition = chunk.GetRelativePositionOfIndex(pointIndex);
+        if (showCube) {
+            Gizmos.DrawWireCube(gameObject.transform.position +                                               // POSITION
+                            new Vector3(chunk.VoxelWidth / 2, chunk.VoxelWidth / 2, chunk.VoxelWidth / 2),    // CENTER OFFSET
+                            new Vector3(chunk.VoxelWidth, chunk.VoxelWidth, chunk.VoxelWidth));               // SIZE
+        }
+        if (showPoints) {
+            for (int i = 0; i < 12; i++) {
+                Vector3 corner1 = chunk.GetWorldSpaceOfIndex(pointIndex + Constants.CornerTable[Constants.EdgeIndexes[i, 0]]);
+                Vector3 corner2 = chunk.GetWorldSpaceOfIndex(pointIndex + Constants.CornerTable[Constants.EdgeIndexes[i, 1]]);
 
-    //             float corner1Sample = chunk.world.SampleTerrain(corner1);
-    //             float corner2Sample = chunk.world.SampleTerrain(corner2);
+                float corner1Sample = chunk.world.SampleTerrain(corner1);
+                float corner2Sample = chunk.world.SampleTerrain(corner2);
 
-    //             if ((corner1Sample > Constants.TERRAIN_SURFACE && corner2Sample <= Constants.TERRAIN_SURFACE) ||
-    //                 (corner2Sample > Constants.TERRAIN_SURFACE && corner1Sample <= Constants.TERRAIN_SURFACE)) {
-    //                     Gizmos.color = new Color(0, 0, 1, 0.5f);
-    //                     Vector3 spherePos;
-    //                     if (chunk.world.smoothTerrain) {
-    //                         float difference = corner2Sample - corner1Sample;
+                corner1Sample = Mathf.Clamp(corner1Sample, -100000, 100000);
+                corner2Sample = Mathf.Clamp(corner2Sample, -100000, 100000);
 
-    //                         if (difference == 0)
-    //                             difference = 0.5f;
-    //                         else
-    //                             difference = (Constants.TERRAIN_SURFACE - corner1Sample) / difference;
+                if ((corner1Sample > chunk.world.surfaceDensityValue && corner2Sample <= chunk.world.surfaceDensityValue) ||
+                    (corner2Sample > chunk.world.surfaceDensityValue && corner1Sample <= chunk.world.surfaceDensityValue)) {
+                        Gizmos.color = new Color(0, 0, 1, 0.5f);
+                        Vector3 spherePos;
+                        if (chunk.world.smoothTerrain) {
+                            float difference = corner2Sample - corner1Sample;
 
-    //                         spherePos = corner1 + ((corner2 - corner1) * difference);
-    //                     } else {
-    //                         spherePos = (corner1 + corner2) / 2f;
-    //                     }
-    //                 Gizmos.DrawSphere(spherePos, 0.0625f * chunk.VoxelWidth);
-    //             }
-    //         }
-    //     }
-    // }
+                            if (difference == 0)
+                                difference = 0.5f;
+                            else
+                                difference = (chunk.world.surfaceDensityValue - corner1Sample) / difference;
+
+                            spherePos = corner1 + ((corner2 - corner1) * difference);
+                        } else {
+                            spherePos = (corner1 + corner2) / 2f;
+                        }
+                    Gizmos.DrawSphere(spherePos, 0.0625f * chunk.VoxelWidth);
+                }
+            }
+        }
+    }
 }

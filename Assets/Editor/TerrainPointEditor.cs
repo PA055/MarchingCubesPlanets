@@ -48,18 +48,15 @@ public class TerrainPointEditor : Editor {
 
         TerrainPoint terrainPoint = (TerrainPoint)target;
 
+        EditorGUILayout.LabelField("Density Value: " + terrainPoint.chunk.GetTerrainAtIndex(terrainPoint.pointIndex));
+
         EditorGUILayout.LabelField("Index in Chunk: " + terrainPoint.pointIndex.ToString());
         EditorGUILayout.LabelField("Position in Chunk: " + terrainPoint.pointInChunk.ToString());
         EditorGUILayout.LabelField("Position in World: " + terrainPoint.chunk.GetWorldSpaceOfIndex(terrainPoint.pointIndex).ToString());
 
-        // if (GUILayout.Button("March Cube")) {
-        //     terrainPoint.chunk.MarchCube(terrainPoint.pointIndex);
-        //     terrainPoint.chunk.BuildMesh();
-        // }
-
-        // if (GUILayout.Button((terrainPoint.showCube ? "Hide" : "Show") + " Cube"))
-        //     terrainPoint.ShowCube(!terrainPoint.showCube);
-        // if (GUILayout.Button((terrainPoint.showPoints ? "Hide" : "Show") + " Vertices"))
-        //     terrainPoint.ShowPoints(!terrainPoint.showPoints);
+        if (GUILayout.Button((terrainPoint.showCube ? "Hide" : "Show") + " Cube"))
+            terrainPoint.ShowCube(!terrainPoint.showCube);
+        if (GUILayout.Button((terrainPoint.showPoints ? "Hide" : "Show") + " Vertices"))
+            terrainPoint.ShowPoints(!terrainPoint.showPoints);
     }
 }
