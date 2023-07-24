@@ -7,18 +7,25 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     public PlayerMode playerMode;
-
+    [Space]
     public World world;
     public Camera playerCamera;
-    public Vector3 planetCenter;
+
+    [Header("Player Settings")]
     public float brushSize = 2f; 
-    public bool alignToPlanet = true;
     public float lookXLimit = 60.0f;
     public float lookSpeed = 2.0f;
     public float speed = 5.0f;
     public float jumpHeight = 2.0f;
     public bool canJump = true;
     public float gravity = 9.8f;
+
+    [Header("Planet Mode Settings")]
+    [ConditionalShow(nameof(playerMode), 0)]
+    public bool alignToPlanet = true;
+    [ConditionalShow(nameof(playerMode), 0)]
+    public Vector3 planetCenter;
+
 
     bool grounded = false;
     Rigidbody r;

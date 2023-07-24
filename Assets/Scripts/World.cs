@@ -20,7 +20,8 @@ public class World : MonoBehaviour
     public float surfaceDensityValue;
 
     [Header("Compute Shaders")]
-    ComputeShader marchingCubesShader;
+    public ComputeShader marchingCubesShader;
+
 
     [Header("Debug Settings")]
     public GameObject terrainPointPrefab;

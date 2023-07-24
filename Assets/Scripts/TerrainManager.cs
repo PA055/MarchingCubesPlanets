@@ -12,8 +12,12 @@ public class TerrainManager : MonoBehaviour
     [Space]
     [Header("Special Settings")]
 
-    // [ConditionalShow(nameof(noiseMode), 0)]
-    public Sphere[] spheres;
+    [ConditionalShow(nameof(noiseMode), 0)]
+    public float planetRadius = 20f;
+    [ConditionalShow(nameof(noiseMode), 0)]
+    public float noiseScale = 1f;
+    [ConditionalShow(nameof(noiseMode), 0)]
+    public float noiseHeightMultiplier = 1f;
 
 
     [ConditionalShow(nameof(noiseMode), 1)]
@@ -24,9 +28,25 @@ public class TerrainManager : MonoBehaviour
 
     [ConditionalShow(nameof(noiseMode), 2)]
     public float height = 0f;
+    
+    
+    public Sphere[] spheres;
 
-    public float GetNoiseAtPoint(Vector3 point) {
-        return 0.0f;
+    public float GetSphereNoiseAtPoint(int numLayers, float lacunarity, float persistence, float scale, Vector3 point) {
+        float noiseValue = 0;
+        float frequency = scale / 100;
+        float amplitude = 1;
+
+        for (int i = 0; i < numLayers; i ++) {
+            float n = Mathf.Abs(noise.snoise(point * frequency)*2-1);
+            //n*=n;
+            noiseValue += n * amplitude;
+
+            amplitude *= persistence;
+            frequency *= lacunarity;
+        }
+
+        return noiseValue;
     }
     
     public float GetTerrainAtPoint(Vector3 point) {
@@ -34,6 +54,14 @@ public class TerrainManager : MonoBehaviour
         if (noiseMode == NoiseMode.PerlinNoise) {
             value += noise.cnoise(point * scale) * amplitude;
         } else if (noiseMode == NoiseMode.Sphere) {
+            float maxD = (Vector3.one * planetRadius / 2f).magnitude;
+
+            float fudge = 2.65f;
+            value = (maxD + fudge) / point.magnitude - 0.5f;
+
+            float noise = GetSphereNoiseAtPoint(6, 2, 0.5f, noiseScale, point) * noiseHeightMultiplier;
+
+            value += noise;
         } else if (noiseMode == NoiseMode.FlatTerrain) {
             value += height + 0.5f - point.y;
         } else {
@@ -48,12 +76,12 @@ public class TerrainManager : MonoBehaviour
     void OnDrawGizmos() {
         if (!showGizmos)
             return;
-        
 
-        if (noiseMode == NoiseMode.Sphere) {
-            foreach (Sphere sphere in spheres) {
-                Gizmos.DrawSphere(sphere.center, sphere.radius);
-            }
+        if (noiseMode == NoiseMode.Sphere) 
+            Gizmos.DrawSphere(Vector3.zero, planetRadius);
+
+        foreach (Sphere sphere in spheres) {
+            Gizmos.DrawSphere(sphere.center, sphere.radius);
         }
     }
 }
