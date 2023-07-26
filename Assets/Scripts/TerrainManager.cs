@@ -56,14 +56,17 @@ public class TerrainManager : MonoBehaviour
         } else if (noiseMode == NoiseMode.Sphere) {
             float maxD = (Vector3.one * planetRadius / 2f).magnitude;
 
+            // float fudge = 1.325f * planetRadius;
             float fudge = 2.65f;
             value = (maxD + fudge) / point.magnitude - 0.5f;
 
-            float noise = GetSphereNoiseAtPoint(6, 2, 0.5f, noiseScale, point) * noiseHeightMultiplier;
+            float noise = 0f;
+            if (noiseHeightMultiplier != 0)
+                noise = GetSphereNoiseAtPoint(6, 2, 0.5f, noiseScale, point) * noiseHeightMultiplier;
 
             value += noise;
         } else if (noiseMode == NoiseMode.FlatTerrain) {
-            value += height + 0.5f - point.y;
+            value += height + 1f - point.y;
         } else {
             value += 0.0f;
         }

@@ -9,11 +9,14 @@ public class ChunkEditor : Editor {
     public float threshold = 0.5f;
 
     public override void OnInspectorGUI() {
+        Chunk chunk = (Chunk) target;
+        
+        if (GUILayout.Button("Print Debug Info"))
+            chunk.PrintTimers();
+
         DrawDefaultInspector();
 
-        Chunk chunk = (Chunk) target;
-
-        EditorGUILayout.LabelField("Number of Voxels Per Axis: " + chunk.VoxelsPerAxis.ToString());
+        EditorGUILayout.LabelField("Number of Voxels Per Axis: " + chunk.PointsPerAxis.ToString());
         EditorGUILayout.LabelField("Voxel Width: " + chunk.VoxelWidth.ToString());
 
         EditorGUILayout.LabelField("Chunk Position: " + chunk.chunkIndex.ToString());
@@ -21,8 +24,6 @@ public class ChunkEditor : Editor {
         if (GUILayout.Button("Regenerate Chunk"))
             chunk.RegenerateMesh();
         
-        // if (GUILayout.Button("Clear Mesh"))
-        //     chunk.ClearMesh();
 
         if (chunk.transform.childCount == 0) {
             if (GUILayout.Button("Generate Terrain Points"))
@@ -46,6 +47,7 @@ public class ChunkEditor : Editor {
             if (GUILayout.Button((chunk.showGizmos ? "Hide" : "Show") + " Gizmos Above Threshold"))
                 chunk.ToggleGizmosAboveThreshold(!chunk.showGizmos, threshold);
         }
+
     }
 }
 

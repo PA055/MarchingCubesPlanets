@@ -4,6 +4,9 @@ using UnityEngine;
 
 public static class Constants
 {
+
+
+
 	public static readonly int[] VoxelsPerUnitAtLODValue = new int[] {
 		-1, 1, 2, 4, 6, 8, 10, 12, 14, 16
 	};
@@ -25,6 +28,9 @@ public static class Constants
 		{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}
 
 	};
+
+	public static readonly int[] cornerIndexAFromEdge = {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3};
+	public static readonly int[] cornerIndexBFromEdge = {1, 2, 3, 0, 5, 6, 7, 4, 4, 5, 6, 7};
 
 	public static readonly int[,] TriangleTable = new int[256, 16] {
 		{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},

@@ -7,9 +7,13 @@ using UnityEditor;
 [CanEditMultipleObjects]
 public class WorldEditor : Editor {
     public override void OnInspectorGUI() {
-        DrawDefaultInspector();
-
         World world = (World) target;
+
+        if (GUILayout.Button("Print Debug Info")) {
+            world.PrintAllTimers();
+        }
+
+        DrawDefaultInspector();
 
         if (!Application.isPlaying) {
             if (GUILayout.Button("Regenerate Chunks Near Player")) {

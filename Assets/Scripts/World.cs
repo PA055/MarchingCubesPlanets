@@ -12,6 +12,8 @@ public class World : MonoBehaviour
     public bool smoothTerrain = true;
     public bool flatShaded = false;
     public bool useComputeShader;
+    [ConditionalHide(nameof(useComputeShader), false)]
+    public bool useOldCpu;
 
     [Header("Chunk Generation Settings")]
     public GameObject player;
@@ -88,6 +90,27 @@ public class World : MonoBehaviour
                 chunk.RegenerateMesh();
             }
         }
+    }
+
+    public void PrintAllTimers() {
+        long[] totals = new long[4] {0, 0, 0, 0};
+        foreach (Vector3Int chunkPos in chunks.Keys) {
+            long[] chunkTotals = chunks[chunkPos].GetTimerValues();
+            totals[0] += chunkTotals[0];
+            totals[1] += chunkTotals[1];
+            totals[2] += chunkTotals[2];
+            totals[3] += chunkTotals[3];
+        }
+
+        Debug.Log("Average Populate Terrain Map: " + totals[2] / chunks.Count + " ms");
+        Debug.Log("Average Generate Terrain Buffer: " + totals[3] / chunks.Count + " ms");
+        Debug.Log("Average Run Marching Cubes Algorithm: " + totals[0] / chunks.Count + " ms");
+        Debug.Log("Average Process Triangle Data: " + totals[1] / chunks.Count + " ms");
+        
+        Debug.Log("Total Populate Terrain Map: " + totals[2] + " ms");
+        Debug.Log("Total Generate Terrain Buffer: " + totals[3] + " ms");
+        Debug.Log("Total Run Marching Cubes Algorithm: " + totals[0] + " ms");
+        Debug.Log("Total Process Triangle Data: " + totals[1] + " ms");
     }
 
     Chunk GenerateChunk(Vector3Int chunkCoord) {
@@ -198,9 +221,9 @@ public class World : MonoBehaviour
                 GenerateChunk(p.chunkIndex);
             
             chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int(
-                Mathf.FloorToInt(p.point.x * chunks[p.chunkIndex].VoxelsPerUnit),
-                Mathf.FloorToInt(p.point.y * chunks[p.chunkIndex].VoxelsPerUnit),
-                Mathf.FloorToInt(p.point.z * chunks[p.chunkIndex].VoxelsPerUnit)
+                Mathf.FloorToInt(p.point.x * chunks[p.chunkIndex].PointsPerUnit),
+                Mathf.FloorToInt(p.point.y * chunks[p.chunkIndex].PointsPerUnit),
+                Mathf.FloorToInt(p.point.z * chunks[p.chunkIndex].PointsPerUnit)
             ), value);
 
             chunkIndexes.Add(p.chunkIndex);

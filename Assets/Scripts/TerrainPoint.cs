@@ -25,7 +25,10 @@ public class TerrainPoint : MonoBehaviour
                     chunk.world.SetTerrainAtPoint(chunk.GetWorldSpaceOfIndex(pointIndex), value);
                     if (value > 100000)
                         value = 100000;
-                    gameObject.GetComponent<Renderer>().material.color = new Color(value, value, value, 0.5f);
+                    if (Application.isPlaying)
+                        gameObject.GetComponent<Renderer>().material.color = new Color(value, value, value, 0.5f);
+                    else
+                        gameObject.GetComponent<Renderer>().sharedMaterial.color = new Color(value, value, value, 0.5f);
                 }
             }
         }
@@ -42,7 +45,10 @@ public class TerrainPoint : MonoBehaviour
         this.chunk = chunk;
         this.pointIndex = pointIndex;
         float tv = terrainValue > 100000 ? 100000 : terrainValue;
-        gameObject.GetComponent<Renderer>().material.color = new Color(tv, tv, tv, 0.5f);
+        if (Application.isPlaying)
+            gameObject.GetComponent<Renderer>().material.color = new Color(tv, tv, tv, 0.5f);
+        else
+            gameObject.GetComponent<Renderer>().sharedMaterial.color = new Color(tv, tv, tv, 0.5f);
         gameObject.SetActive(chunk.showGizmos);
     }
 

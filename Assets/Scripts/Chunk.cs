@@ -1,6 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+
 using UnityEngine;
 
 [ExecuteInEditMode]
@@ -26,7 +26,9 @@ public class Chunk : MonoBehaviour
     ComputeBuffer triCountBuffer;
     ComputeBuffer densityMapBuffer;
 
+    public bool showTriangles;
     public Triangle[] triangleArray;
+    List<Triangle> triList = new List<Triangle>();
     public float[] terrainArray;
 
     int oldLOD;
@@ -40,13 +42,19 @@ public class Chunk : MonoBehaviour
     [HideInInspector]
     public bool isGenerated = false;
 
-    public int VoxelsPerUnit {
+    System.Diagnostics.Stopwatch timer_MarchingCubesAlgorithm;
+    System.Diagnostics.Stopwatch timer_ProcessTriangles;
+    System.Diagnostics.Stopwatch timer_PopulateTerrrainMap;
+    System.Diagnostics.Stopwatch timer_GenerateDensityBuffer;
+
+
+    public int PointsPerUnit {
         get {
             return Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail];
         }
     }
 
-    public int VoxelsPerAxis { 
+    public int PointsPerAxis { 
         get {
             return world.chunkSize * Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail] + 1;
         }
@@ -61,6 +69,14 @@ public class Chunk : MonoBehaviour
     void OnDrawGizmos() {
         if (showBorder || world.showChunkOutline)
             Gizmos.DrawWireCube(transform.position + Vector3.one * (world.chunkSize / 2f), Vector3.one * world.chunkSize);
+        if (showTriangles) {
+            Gizmos.color = Color.green;
+            foreach (Triangle tri in triangleArray) {
+                Gizmos.DrawLine(GetWorldSpaceOfPoint(tri.vertexA), GetWorldSpaceOfPoint(tri.vertexB));
+                Gizmos.DrawLine(GetWorldSpaceOfPoint(tri.vertexB), GetWorldSpaceOfPoint(tri.vertexC));
+                Gizmos.DrawLine(GetWorldSpaceOfPoint(tri.vertexC), GetWorldSpaceOfPoint(tri.vertexA));
+            }
+        }
     }
 
     public void Init(World world, Vector3Int chunkIndex, Material material, int LOD, ComputeShader marchingCubesShader) {
@@ -68,6 +84,11 @@ public class Chunk : MonoBehaviour
         this.chunkIndex = chunkIndex;
         this.LevelOfDetail = LOD;
         this.marchingCubesShader = marchingCubesShader;
+
+        timer_MarchingCubesAlgorithm = new System.Diagnostics.Stopwatch();
+        timer_ProcessTriangles = new System.Diagnostics.Stopwatch();
+        timer_PopulateTerrrainMap = new System.Diagnostics.Stopwatch();
+        timer_GenerateDensityBuffer = new System.Diagnostics.Stopwatch();
 
         this.meshFilter = gameObject.GetComponent<MeshFilter>();
         this.meshCollider = gameObject.GetComponent<MeshCollider>();
@@ -81,8 +102,24 @@ public class Chunk : MonoBehaviour
             DrawWidgets();
     }
 
+    public void PrintTimers() {
+        Debug.Log("Populate Terrain Map: " + timer_PopulateTerrrainMap.ElapsedMilliseconds + " ms");
+        Debug.Log("Generate Terrain Buffer: " + timer_GenerateDensityBuffer.ElapsedMilliseconds + " ms");
+        Debug.Log("Run Marching Cubes Algorithm: " + timer_MarchingCubesAlgorithm.ElapsedMilliseconds + " ms");
+        Debug.Log("Process Triangle Data: " + timer_ProcessTriangles.ElapsedMilliseconds + " ms");
+    }
+
+    public long[] GetTimerValues() {
+        return new long[4] { 
+            timer_MarchingCubesAlgorithm.ElapsedMilliseconds, 
+            timer_ProcessTriangles.ElapsedMilliseconds,
+            timer_PopulateTerrrainMap.ElapsedMilliseconds,
+            timer_GenerateDensityBuffer.ElapsedMilliseconds
+        };
+    }
+
     void CreateBuffers() {
-        int numVoxels = VoxelsPerAxis * VoxelsPerAxis * VoxelsPerAxis;
+        int numVoxels = (PointsPerAxis + 1) * (PointsPerAxis + 1) * (PointsPerAxis + 1);
         int maxTriangleCount = numVoxels * 5;
 
         triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
@@ -106,18 +143,17 @@ public class Chunk : MonoBehaviour
     }
 
     public void PopulateTerrainMap() {
-        terrainMap = new float[VoxelsPerAxis, VoxelsPerAxis, VoxelsPerAxis];
-        terrainArray = new float[VoxelsPerAxis * VoxelsPerAxis * VoxelsPerAxis];
+        timer_PopulateTerrrainMap.Start();
+        terrainMap = new float[PointsPerAxis, PointsPerAxis, PointsPerAxis];
         oldLOD = LevelOfDetail;
-        for (int x = 0; x < VoxelsPerAxis; x++) {
-            for (int y = 0; y < VoxelsPerAxis; y++) {
-                for (int z = 0; z < VoxelsPerAxis; z++) {
+        for (int x = 0; x < PointsPerAxis; x++) {
+            for (int y = 0; y < PointsPerAxis; y++) {
+                for (int z = 0; z < PointsPerAxis; z++) {
                     terrainMap[x, y, z] = world.GetGeneratedTerrainAtPoint(GetWorldSpaceOfIndex(new Vector3Int(x, y, z)));
-                    terrainArray[x + (y + z * VoxelsPerAxis) * VoxelsPerAxis] = terrainMap[x, y, z];
                 }
             }
         }
-        densityMapBuffer.SetData(terrainArray);
+        timer_PopulateTerrrainMap.Stop();
     }
 
     public void DrawWidgets() {
@@ -126,9 +162,9 @@ public class Chunk : MonoBehaviour
         }
         terrainPoints.Clear();
 
-        for (int x = 0; x < VoxelsPerAxis; x++) {
-            for (int y = 0; y < VoxelsPerAxis; y++) {
-                for (int z = 0; z < VoxelsPerAxis; z++) {
+        for (int x = 0; x < PointsPerAxis; x++) {
+            for (int y = 0; y < PointsPerAxis; y++) {
+                for (int z = 0; z < PointsPerAxis; z++) {
                     GameObject terrainPoint = (GameObject) Instantiate(world.terrainPointPrefab, GetWorldSpaceOfIndex(new Vector3Int(x, y, z)), Quaternion.identity);
                     terrainPoint.GetComponent<TerrainPoint>().init(this, new Vector3Int(x, y, z));
                     terrainPoint.transform.parent = transform;
@@ -143,11 +179,13 @@ public class Chunk : MonoBehaviour
         ClearMesh();
         if (LevelOfDetail != oldLOD) {
             PopulateTerrainMap();
-            DrawWidgets();
+            if (world.generateGizmos)
+                DrawWidgets();
         }
+
         if (world.useComputeShader)
             GPUMarchingCubes();
-        else
+        else 
             CPUMarchingCubes();
 
         BuildMesh();
@@ -155,16 +193,30 @@ public class Chunk : MonoBehaviour
     }
 
     public void GPUMarchingCubes() {
-        int marchingCubesKernel = marchingCubesShader.FindKernel("MarchCubes");
+        timer_GenerateDensityBuffer.Start();
+        terrainArray = new float[(PointsPerAxis + 1) * (PointsPerAxis + 1) * (PointsPerAxis + 1)];
+        for (int x = 0; x < PointsPerAxis + 1; x++) {
+            for (int y = 0; y < PointsPerAxis + 1; y++) {
+                for (int z = 0; z < PointsPerAxis + 1; z++) {
+                    terrainArray[IndexFromCoord(new Vector3Int(x, y, z))] = world.SampleTerrain(GetWorldSpaceOfIndex(new Vector3Int(x, y, z)));
+                }
+            }
+        }
+        densityMapBuffer.SetData(terrainArray);
+        timer_GenerateDensityBuffer.Stop();
 
-        marchingCubesShader.SetInt("NumPointsPerAxis", VoxelsPerAxis);
+        timer_MarchingCubesAlgorithm.Start();
+        int marchingCubesKernel = marchingCubesShader.FindKernel("ProcessCube");
+
+        marchingCubesShader.SetInt("NumPointsPerAxis", PointsPerAxis);
         marchingCubesShader.SetFloat("isoLevel", world.surfaceDensityValue);
         marchingCubesShader.SetBool("smoothTerrain", world.smoothTerrain);
+        // marchingCubesShader.SetVector("chunkCoord", (Vector3) (chunkIndex * world.chunkSize));
         triBuffer.SetCounterValue(0);
         marchingCubesShader.SetBuffer(marchingCubesKernel, "triangles", triBuffer);
         marchingCubesShader.SetBuffer(marchingCubesKernel, "densityMap", densityMapBuffer);
 
-        marchingCubesShader.Dispatch(marchingCubesKernel, Mathf.CeilToInt(VoxelsPerAxis / 8), Mathf.CeilToInt(VoxelsPerAxis / 8), Mathf.CeilToInt(VoxelsPerAxis / 8));
+        marchingCubesShader.Dispatch(marchingCubesKernel, Mathf.CeilToInt((PointsPerAxis + 1) / 8f), Mathf.CeilToInt((PointsPerAxis + 1) / 8f), Mathf.CeilToInt((PointsPerAxis + 1) / 8f));
 
         int[] triCountData = new int[1];
         triCountBuffer.SetData(triCountData);
@@ -173,25 +225,29 @@ public class Chunk : MonoBehaviour
 
         triangleArray = new Triangle[triCountData[0]];
         triBuffer.GetData(triangleArray, 0,  0, triCountData[0]);
+        timer_MarchingCubesAlgorithm.Stop();
 
-        foreach(Triangle tri in triangleArray) {
-            Debug.Log(tri.ToString());
-        }
-        // ProcessTriangleData(triangleArray);
+        // Debug.Log("------------------- Chunk at " + chunkIndex + " -------------------");
+        // foreach(Triangle tri in triangleArray) {
+        //     Debug.Log(tri.ToString());
+        // }
+        // Debug.Log("-------------------------------------------------------------------");
+        ProcessTriangleData(triangleArray);
     }
 
     void ProcessTriangleData(Triangle[] triangleArray) {
+        timer_ProcessTriangles.Start();
         ClearMesh();
 
         foreach (Triangle tri in triangleArray) {
             if (world.flatShaded) {
                 vertices.Add(tri.vertexA);
                 triangles.Add(vertices.Count - 1);
-
-                vertices.Add(tri.vertexC);
+                
+                vertices.Add(tri.vertexB);
                 triangles.Add(vertices.Count - 1);
 
-                vertices.Add(tri.vertexB);
+                vertices.Add(tri.vertexC);
                 triangles.Add(vertices.Count - 1);
             } else {
                 triangles.Add(GetIndexOfVertex(tri.vertexA));
@@ -199,19 +255,112 @@ public class Chunk : MonoBehaviour
                 triangles.Add(GetIndexOfVertex(tri.vertexC));
             }
         }
+        timer_ProcessTriangles.Stop();
     }
 
     void CPUMarchingCubes() {
-        for (int x = 0; x < VoxelsPerAxis; x++) {
-            for (int y = 0; y < VoxelsPerAxis; y++) {
-                for (int z = 0; z < VoxelsPerAxis; z++) {
-                    CPUMarchCube(new Vector3Int(x, y, z));
+        if (!world.useOldCpu) {
+            timer_GenerateDensityBuffer.Start();
+            terrainArray = new float[(PointsPerAxis + 1) * (PointsPerAxis + 1) * (PointsPerAxis + 1)];
+            for (int x = 0; x < PointsPerAxis + 1; x++) {
+                for (int y = 0; y < PointsPerAxis + 1; y++) {
+                    for (int z = 0; z < PointsPerAxis + 1; z++) {
+                        terrainArray[IndexFromCoord(new Vector3Int(x, y, z))] = world.SampleTerrain(GetWorldSpaceOfIndex(new Vector3Int(x, y, z)));
+                    }
+                }
+            }
+            timer_GenerateDensityBuffer.Stop();
+        }
+
+        timer_MarchingCubesAlgorithm.Start();
+        for (int x = 0; x < PointsPerAxis; x++) {
+            for (int y = 0; y < PointsPerAxis; y++) {
+                for (int z = 0; z < PointsPerAxis; z++) {
+                    if (world.useOldCpu)
+                        OldCPUMarchCube(new Vector3Int(x, y, z));
+                    else
+                        CPUMarchCube(new Vector3Int(x, y, z));
                 }
             }
         }
+        timer_MarchingCubesAlgorithm.Stop();
+
+        triangleArray = triList.ToArray();
+        if (!world.useOldCpu)
+            ProcessTriangleData(triangleArray);
     }
 
     public void CPUMarchCube(Vector3Int index) {
+        if (index.x >= PointsPerAxis || index.y >= PointsPerAxis || index.z >= PointsPerAxis)
+            return;
+
+        Vector3Int[] cornerCoords = new Vector3Int[8];
+        for (int i = 0; i < 8; i++) {
+            cornerCoords[i] = index + Constants.CornerTable[i];
+        }
+
+        int cubeConfig = 0;
+        for (int i = 0; i < 8; i++) {
+            if (SampleDensity(cornerCoords[i]) < world.surfaceDensityValue) {
+                cubeConfig |= (1 << i);
+            }
+        }
+
+        for (int i = 0; i < 16; i+=3) {
+            if (Constants.TriangleTable[cubeConfig, i] == -1) { break; }
+
+            int edgeIndexA = Constants.TriangleTable[cubeConfig, i + 0];
+            int a0 = Constants.cornerIndexAFromEdge[edgeIndexA];
+            int a1 = Constants.cornerIndexBFromEdge[edgeIndexA];
+
+            int edgeIndexB = Constants.TriangleTable[cubeConfig, i + 1];
+            int b0 = Constants.cornerIndexAFromEdge[edgeIndexB];
+            int b1 = Constants.cornerIndexBFromEdge[edgeIndexB];
+
+            int edgeIndexC = Constants.TriangleTable[cubeConfig, i + 2];
+            int c0 = Constants.cornerIndexAFromEdge[edgeIndexC];
+            int c1 = Constants.cornerIndexBFromEdge[edgeIndexC];
+
+            // Calculate positions of each vertex.
+            Vector3 vertexA = createVertex(cornerCoords[a0], cornerCoords[a1]);
+            Vector3 vertexB = createVertex(cornerCoords[b0], cornerCoords[b1]);
+            Vector3 vertexC = createVertex(cornerCoords[c0], cornerCoords[c1]);
+
+            // Create triangle
+            Triangle tri;
+            tri.vertexA = vertexA;
+            tri.vertexB = vertexB;
+            tri.vertexC = vertexC;
+            triList.Add(tri);
+        }
+    }
+
+    int IndexFromCoord(Vector3Int coord) {
+        return coord.x + (coord.y + coord.z * (PointsPerAxis + 1)) * (PointsPerAxis + 1);
+    }
+
+    float SampleDensity(Vector3Int coord) {
+        int index = IndexFromCoord(coord);
+        return terrainArray[index];
+    }
+
+    Vector3 createVertex(Vector3Int pointA, Vector3Int pointB) {
+        if (world.smoothTerrain) {
+        // Interpolate between the 2 points based on the density
+        float pointASample = SampleDensity(pointA);
+        float pointBSample = SampleDensity(pointB);
+
+        float t = (world.surfaceDensityValue - pointASample) / (pointBSample - pointASample);
+	    Vector3 position = pointA + t * (Vector3) (pointB - pointA);
+
+        return position;
+    } else {
+        // Return the middle point between the 2
+        return (Vector3) (pointA + pointB) / 2f;
+    }
+    }
+
+    public void OldCPUMarchCube(Vector3Int index) {
         float[] cube = new float[8];
         for (var i = 0; i < 8; i++) {
             Vector3 corner = GetWorldSpaceOfIndex(index + Constants.CornerTable[i]);
@@ -225,6 +374,7 @@ public class Chunk : MonoBehaviour
         
         int edgeIndex = 0;
         for (int i = 0; i < 5; i++) {
+            Triangle tri = new Triangle();
             for (int p = 0; p < 3; p++) {
                 int TriangleIndex = Constants.TriangleTable[configIndex, edgeIndex];
                 if (TriangleIndex == -1)
@@ -258,8 +408,17 @@ public class Chunk : MonoBehaviour
                     triangles.Add(GetIndexOfVertex(vertPos));
                 }
 
+                if (p == 0)
+                    tri.vertexA = vertPos;
+                else if (p == 1)
+                    tri.vertexB = vertPos;
+                else if (p == 2)
+                    tri.vertexC = vertPos;
+
                 edgeIndex++;
             }
+
+            triList.Add(tri);
         }
     }
 

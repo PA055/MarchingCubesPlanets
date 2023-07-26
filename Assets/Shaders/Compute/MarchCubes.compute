@@ -1,8 +1,10 @@
-#pragma kernel MarchCubes
+#pragma kernel ProcessCube
 #include "/Includes/MarchTables.compute"
 
 struct Triangle {
-    float3 vertexA, vertexB, vertexC;
+    float3 vertexA;
+    float3 vertexB;
+    float3 vertexC;
 };
 
 AppendStructuredBuffer<Triangle> triangles;
@@ -11,75 +13,78 @@ StructuredBuffer<float> densityMap;
 int NumPointsPerAxis;
 float isoLevel;
 bool smoothTerrain;
+// float3 chunkCoord;
 
-
-int PointToIndex(int3 point) {
-    return point.x + (point.y + point.z * NumPointsPerAxis) * NumPointsPerAxis;
+int IndexFromCoord(int3 coord) {
+	return coord.x + (coord.y + coord.z * (NumPointsPerAxis + 1)) * (NumPointsPerAxis + 1);
 }
 
-float SampleDensity(int3 point) {
-    int index = PointToIndex(point);
+float SampleDensity(int3 coord) {
+    int index = IndexFromCoord(coord);
     return densityMap[index];
 }
 
 float3 createVertex(int3 pointA, int3 pointB) {
     if (smoothTerrain) {
+        // Interpolate between the 2 points based on the density
         float pointASample = SampleDensity(pointA);
         float pointBSample = SampleDensity(pointB);
 
-        float t = (isoLevel - densityA) / (densityB - densityA);
-	    float3 position = posA + t * (posB - posA);
+        float t = (isoLevel - pointASample) / (pointBSample - pointASample);
+	    float3 position = (float3) pointA + t *  (float3) (pointB - pointA);
 
         return position;
     } else {
-        return (pointA + pointB) / 2f;
+        // Return the middle point between the 2
+        return (float3) (pointA + pointB) * 0.5f;
     }
 }
 
 [numthreads(8,8,8)]
-void CSMain (int3 id : SV_DispatchThreadID) {
-    if (id.x >= NumPointsPerAxis - 1 || id.y >= NumPointsPerAxis - 1 || id.z >= NumPointsPerAxis - 1) {
-        return
+void ProcessCube (int3 id : SV_DispatchThreadID) {
+    if (id.x >= NumPointsPerAxis || id.y >= NumPointsPerAxis || id.z >= NumPointsPerAxis) {
+        return;
     }
 
     int3 cornerCoords[8];
-    for (int i = 0; i < 8; i++) {
-        cornerCoords[i] = id + cubeCorners[i];
+    for (int c = 0; c < 8; c++) {
+        cornerCoords[c] = id + cubeCorners[c];
     }
 
     int cubeConfig = 0;
-    for (int i = 0; i < 8; i++) {
-        if (SampleDensity(cornerCoords[i]) < isoLevel) {
-            cubeConfig |= (1 << i);
+    for (int j = 0; j < 8; j++) {
+        if (SampleDensity(cornerCoords[j]) < isoLevel) {
+            cubeConfig |= (1 << j);
         }
     }
 
-    int edgeIndices[] = triangulation[cubeConfiguration];
+    int edgeIndices[16] = triangulation[cubeConfig];
 
-    for (i = 0; i < 16; i+=3) {
+    for (int i = 0; i < 16; i += 3) {
         if (edgeIndices[i] == -1) { break; }
 
         int edgeIndexA = edgeIndices[i];
-        int a0 = cornerIndexAFromEdge[edgeIndexA];
-        int a1 = cornerIndexBFromEdge[edgeIndexA];
-        
-        int edgeIndexB = edgeIndices[i];
-        int b0 = cornerIndexAFromEdge[edgeIndexB];
-        int b1 = cornerIndexBFromEdge[edgeIndexB];
-        
-        int edgeIndexC = edgeIndices[i];
-        int c0 = cornerIndexAFromEdge[edgeIndexC];
-        int c1 = cornerIndexBFromEdge[edgeIndexC];
+		int a0 = cornerIndexAFromEdge[edgeIndexA];
+		int a1 = cornerIndexBFromEdge[edgeIndexA];
 
-        float3 vertexA = createVertex(cornerCoords[a0], cornerCoords[a1]);
-        float3 vertexB = createVertex(cornerCoords[b0], cornerCoords[b1]);
-        float3 vertexC = createVertex(cornerCoords[c0], cornerCoords[c1]);
+		int edgeIndexB = edgeIndices[i+1];
+		int b0 = cornerIndexAFromEdge[edgeIndexB];
+		int b1 = cornerIndexBFromEdge[edgeIndexB];
 
-        Triangle tri;
-        Triangle.vertexA = vertexC;
-        Triangle.vertexB = vertexB;
-        Triangle.vertexC = vertexA;
+		int edgeIndexC = edgeIndices[i+2];
+		int c0 = cornerIndexAFromEdge[edgeIndexC];
+		int c1 = cornerIndexBFromEdge[edgeIndexC];
 
-        triangles.Append(tri);
+		// Calculate positions of each vertex.
+		float3 vertexA = createVertex(cornerCoords[a0], cornerCoords[a1]);
+		float3 vertexB = createVertex(cornerCoords[b0], cornerCoords[b1]);
+		float3 vertexC = createVertex(cornerCoords[c0], cornerCoords[c1]);
+
+        // Create triangle
+		Triangle tri;
+		tri.vertexA = vertexC;
+		tri.vertexB = vertexB;
+		tri.vertexC = vertexA;
+		triangles.Append(tri);
     }
 }
