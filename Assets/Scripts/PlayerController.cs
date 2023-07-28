@@ -10,9 +10,11 @@ public class PlayerController : MonoBehaviour
     [Space]
     public World world;
     public Camera playerCamera;
+    public LayerMask terrainMask;
 
     [Header("Player Settings")]
     public float brushSize = 2f; 
+    public float brushWeight = 20f;
     public float lookXLimit = 60.0f;
     public float lookSpeed = 2.0f;
     public float speed = 5.0f;
@@ -31,9 +33,11 @@ public class PlayerController : MonoBehaviour
     Rigidbody r;
     Vector2 rotation = Vector2.zero;
     float maxVelocityChange = 10.0f;
+    Vector3 hp, a, b;
+    bool firstFrame = true;
 
-    void Awake()
-    {
+    void Awake() {
+        firstFrame = true;
         if (playerMode == PlayerMode.Static)
             return;
 
@@ -51,32 +55,55 @@ public class PlayerController : MonoBehaviour
         if (playerMode == PlayerMode.Static)
             return;
 
+        if (firstFrame) {
+            RaycastHit hit;
+            if (Physics.SphereCast(transform.position, 0.5f, transform.up, out hit, 1000f, terrainMask))
+                transform.position = hit.point;
+            firstFrame = false;
+        }
+
         // Player and Camera rotation
         rotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
         rotation.x = Mathf.Clamp(rotation.x, -lookXLimit, lookXLimit);
+        rotation.y = Input.GetAxis("Mouse X") * lookSpeed;
         playerCamera.transform.localRotation = Quaternion.Euler(rotation.x, 0, 0);
-        Quaternion localRotation = Quaternion.Euler(0f, Input.GetAxis("Mouse X") * lookSpeed, 0f);
+        Quaternion localRotation = Quaternion.Euler(0f, rotation.y, 0f);
         transform.rotation = transform.rotation * localRotation;
 
         RaycastHit hitInfo;
         if (Input.GetMouseButton(0)) {
-            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f)) {
-                DrawSphere(hitInfo.point, brushSize, true);
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
+                DrawSphere(hitInfo.point, brushSize, brushWeight);
             }
         }
 
         if (Input.GetMouseButton(1)) {
-            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f)) {
-                DrawSphere(hitInfo.point, brushSize, false);
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
+                DrawSphere(hitInfo.point, brushSize, -brushWeight);
             }
         }
 
-        RaycastHit hit;
-        if (world.SampleTerrain(transform.position) > world.surfaceDensityValue) {
-            if (Physics.Raycast(transform.position, transform.up, out hit, 100f, LayerMask.NameToLayer("Terrain"))) {
-                transform.position = hit.point;
-            }
-        }
+        if (world.SampleTerrain(transform.position) > world.surfaceDensityValue)
+            TerraTest();
+    }
+
+    void TerraTest() {
+        float heightOffset = 5f;
+		Vector3 a = transform.position - transform.up * (1 + 0.5f - heightOffset);
+		Vector3 b = transform.position + transform.up * (1 + 0.5f + heightOffset);
+		RaycastHit hitInfo;
+
+
+		if (Physics.CapsuleCast(a, b, 0.5f, -transform.up, out hitInfo, 20f, terrainMask)) {
+			hp = hitInfo.point;
+			Vector3 newPos = (hp + transform.up * 1);
+			float deltaY = Vector3.Dot(transform.up, (newPos - transform.position));
+			if (deltaY > 0.05f)
+			{
+				transform.position = newPos;
+				grounded = true;
+			}
+		}
     }
 
     void FixedUpdate()
@@ -164,35 +191,40 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    void OnCollisionStay(Collision other) {
-        grounded = true;
+    void LateUpdate() {
+        if (Physics.Raycast(transform.position, -transform.up, 0.1f, terrainMask))
+            grounded = true;
+        else
+            grounded = false;
     }
 
-    void OnCollisionExit(Collision other) {
-        grounded = false;
-    }
-
-    void DrawSphere(Vector3 originPoint, float radius, bool addTerrain) {
+    void DrawSphere(Vector3 originPoint, float radius, float weight) {
         List<Vector3Int> chunksToReload = new List<Vector3Int>();
 
-        for (float x = originPoint.x - radius; x < originPoint.x + radius; x += 1) {
-            for (float y = originPoint.y - radius; y < originPoint.y + radius; y += 1) {
-                for (float z = originPoint.z - radius; z < originPoint.z + radius; z += 1) {
+        for (float x = originPoint.x - (radius * 2); x < originPoint.x + (radius * 2); x += 1) {
+            for (float y = originPoint.y - (radius * 2); y < originPoint.y + (radius * 2); y += 1) {
+                for (float z = originPoint.z - (radius * 2); z < originPoint.z + (radius * 2); z += 1) {
                     Vector3 point = new Vector3(x, y, z);
-                    float dstToOrigin = (point - originPoint).magnitude;
-                    if (dstToOrigin <= radius) {
-                    // if (true) {
+                    Vector3 offset = point - originPoint;
+                    float sqrDst = Vector3.Dot(offset, offset);
+
+                    if (sqrDst <= radius * radius) {
+                        float dst = Mathf.Sqrt(sqrDst);
+                        float brushWeight = 1 - Mathf.SmoothStep(radius * 0.7f, radius, dst);
+
                         float pointValue = world.SampleTerrain(point);
-                        if (addTerrain)
-                            pointValue += (radius * radius) / (point - originPoint).sqrMagnitude;
-                        else
-                            pointValue -= (radius * radius) / (point - originPoint).sqrMagnitude;
-                        if (float.IsFinite(pointValue)) {
-                            Vector3Int[] chunks = world.SetTerrainAtPoint(point, pointValue);
-                            foreach (Vector3Int i in chunks) {
-                                if (!chunksToReload.Contains(i))
-                                    chunksToReload.Add(i);
-                            }
+                        pointValue += weight * Time.deltaTime * brushWeight;
+                        if (!float.IsFinite(pointValue)){
+                            if (pointValue > 0)
+                                pointValue = 100;
+                            else
+                                pointValue = -100;
+                        }
+
+                        Vector3Int[] chunks = world.SetTerrainAtPoint(point, pointValue);
+                        foreach (Vector3Int i in chunks) {
+                            if (!chunksToReload.Contains(i))
+                                chunksToReload.Add(i);
                         }
                     }
                 }
@@ -203,6 +235,10 @@ public class PlayerController : MonoBehaviour
             // Debug.Log("Final: " + i.ToString());
             world.chunks[i].RegenerateMesh();
         }
+    }
+
+    void OnDrawGizmos() {
+        
     }
 }
 
