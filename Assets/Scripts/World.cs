@@ -11,9 +11,6 @@ public class World : MonoBehaviour
     public Material material;
     public bool smoothTerrain = true;
     public bool flatShaded = false;
-    public bool useComputeShader;
-    [ConditionalHide(nameof(useComputeShader), false)]
-    public bool useOldCpu;
 
     [Header("Chunk Generation Settings")]
     public GameObject player;
@@ -24,28 +21,22 @@ public class World : MonoBehaviour
     [Header("Compute Shaders")]
     public ComputeShader marchingCubesShader;
     public ComputeShader densityMapShader;
+    public ComputeShader terraformShader;
 
     [Header("Debug Settings")]
-    public GameObject terrainPointPrefab;
-    public bool generateGizmos = true;
     public bool showChunkOutline = true;
-    
-    [Space]
-
-
-    [HideInInspector]
-    public bool showCube = false;
-    [HideInInspector]
-    public bool showPoints = false;
-    [HideInInspector]
-    public bool showGizmos = false;
 
     [HideInInspector]
     public Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
 
+    System.Diagnostics.Stopwatch timer_terraformingTime;
+    long terraformingAverage;
+    int numTerraformCalls;
+
     void Start() {
+        timer_terraformingTime = new System.Diagnostics.Stopwatch();
         ClearChunks();
-        GenerateChunks();
+        UpdateChunks();
     }
 
     void Update() {
@@ -58,7 +49,7 @@ public class World : MonoBehaviour
                     chunk.gameObject.SetActive(false);
                 }
             }
-            GenerateChunks();
+            UpdateChunks();
         }
     }
 
@@ -70,27 +61,26 @@ public class World : MonoBehaviour
     }
 
     public void PrintAllTimers() {
-        long[] totals = new long[4] {0, 0, 0, 0};
+        long[] totals = new long[3] {0, 0, 0};
         foreach (Vector3Int chunkPos in chunks.Keys) {
             long[] chunkTotals = chunks[chunkPos].GetTimerValues();
             totals[0] += chunkTotals[0];
             totals[1] += chunkTotals[1];
             totals[2] += chunkTotals[2];
-            totals[3] += chunkTotals[3];
         }
 
         Debug.Log("Average Populate Terrain Map: " + totals[2] / chunks.Count + " ms");
-        Debug.Log("Average Generate Terrain Buffer: " + totals[3] / chunks.Count + " ms");
         Debug.Log("Average Run Marching Cubes Algorithm: " + totals[0] / chunks.Count + " ms");
         Debug.Log("Average Process Triangle Data: " + totals[1] / chunks.Count + " ms");
+        Debug.Log("Average Terraforming Time: " + terraformingAverage + " ms");
         
         Debug.Log("Total Populate Terrain Map: " + totals[2] + " ms");
-        Debug.Log("Total Generate Terrain Buffer: " + totals[3] + " ms");
         Debug.Log("Total Run Marching Cubes Algorithm: " + totals[0] + " ms");
         Debug.Log("Total Process Triangle Data: " + totals[1] + " ms");
+        Debug.Log("Total Terraforming Time: " + terraformingAverage * numTerraformCalls + " ms");
     }
 
-    public void GenerateChunks() {
+    public void UpdateChunks() {
         Vector3Int playerChunkCoords = GetChunkCoordOfPoint(player.transform.position);
 
         for (int x = playerChunkCoords.x - halfRenderDistanceInChunks; x < playerChunkCoords.x + halfRenderDistanceInChunks; x++) {
@@ -188,8 +178,11 @@ public class World : MonoBehaviour
     }
 
     public void Terraform(Vector3 point, float radius, float weight) {
+        timer_terraformingTime.Start();
         Point[] points = GetChunksOfPoint(point);
-        
+        timer_terraformingTime.Stop();
+        terraformingAverage = ((terraformingAverage * numTerraformCalls) + timer_terraformingTime.ElapsedMilliseconds) / (numTerraformCalls + 1);
+        numTerraformCalls++;
     }
 }
 

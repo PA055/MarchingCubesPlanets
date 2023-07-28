@@ -34,7 +34,6 @@ public class Chunk : MonoBehaviour
     System.Diagnostics.Stopwatch timer_MarchingCubesAlgorithm;
     System.Diagnostics.Stopwatch timer_ProcessTriangles;
     System.Diagnostics.Stopwatch timer_PopulateTerrrainMap;
-    System.Diagnostics.Stopwatch timer_GenerateDensityBuffer;
 
 
     public int PointsPerUnit {
@@ -70,7 +69,6 @@ public class Chunk : MonoBehaviour
         timer_MarchingCubesAlgorithm = new System.Diagnostics.Stopwatch();
         timer_ProcessTriangles = new System.Diagnostics.Stopwatch();
         timer_PopulateTerrrainMap = new System.Diagnostics.Stopwatch();
-        timer_GenerateDensityBuffer = new System.Diagnostics.Stopwatch();
 
         this.meshFilter = gameObject.GetComponent<MeshFilter>();
         this.meshCollider = gameObject.GetComponent<MeshCollider>();
@@ -84,17 +82,15 @@ public class Chunk : MonoBehaviour
 
     public void PrintTimers() {
         Debug.Log("Populate Terrain Map: " + timer_PopulateTerrrainMap.ElapsedMilliseconds + " ms");
-        Debug.Log("Generate Terrain Buffer: " + timer_GenerateDensityBuffer.ElapsedMilliseconds + " ms");
         Debug.Log("Run Marching Cubes Algorithm: " + timer_MarchingCubesAlgorithm.ElapsedMilliseconds + " ms");
         Debug.Log("Process Triangle Data: " + timer_ProcessTriangles.ElapsedMilliseconds + " ms");
     }
 
     public long[] GetTimerValues() {
-        return new long[4] { 
+        return new long[3] { 
             timer_MarchingCubesAlgorithm.ElapsedMilliseconds, 
             timer_ProcessTriangles.ElapsedMilliseconds,
             timer_PopulateTerrrainMap.ElapsedMilliseconds,
-            timer_GenerateDensityBuffer.ElapsedMilliseconds
         };
     }
 
