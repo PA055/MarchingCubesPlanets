@@ -35,6 +35,7 @@ public class PlayerController : MonoBehaviour
     float maxVelocityChange = 10.0f;
     Vector3 hp, a, b;
     bool firstFrame = true;
+    bool terraTest = false;
 
     void Awake() {
         firstFrame = true;
@@ -57,7 +58,7 @@ public class PlayerController : MonoBehaviour
 
         if (firstFrame) {
             RaycastHit hit;
-            if (Physics.SphereCast(transform.position, 0.5f, transform.up, out hit, 1000f, terrainMask))
+            if (Physics.SphereCast(transform.position, 0.5f, transform.up, out hit, 10000f, terrainMask))
                 transform.position = hit.point;
             firstFrame = false;
         }
@@ -73,18 +74,24 @@ public class PlayerController : MonoBehaviour
         RaycastHit hitInfo;
         if (Input.GetMouseButton(0)) {
             if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
-                DrawSphere(hitInfo.point, brushSize, brushWeight);
+                world.Terraform(hitInfo.point, brushSize, brushWeight);
+                if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
+                    terraTest = true;
             }
         }
 
         if (Input.GetMouseButton(1)) {
             if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
-                DrawSphere(hitInfo.point, brushSize, -brushWeight);
+                world.Terraform(hitInfo.point, brushSize, -brushWeight);
+                if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
+                    terraTest = true;
             }
         }
 
-        if (world.SampleTerrain(transform.position) > world.surfaceDensityValue)
+        if (terraTest) {
+            terraTest = false;
             TerraTest();
+        }
     }
 
     void TerraTest() {
@@ -196,49 +203,6 @@ public class PlayerController : MonoBehaviour
             grounded = true;
         else
             grounded = false;
-    }
-
-    void DrawSphere(Vector3 originPoint, float radius, float weight) {
-        List<Vector3Int> chunksToReload = new List<Vector3Int>();
-
-        for (float x = originPoint.x - (radius * 2); x < originPoint.x + (radius * 2); x += 1) {
-            for (float y = originPoint.y - (radius * 2); y < originPoint.y + (radius * 2); y += 1) {
-                for (float z = originPoint.z - (radius * 2); z < originPoint.z + (radius * 2); z += 1) {
-                    Vector3 point = new Vector3(x, y, z);
-                    Vector3 offset = point - originPoint;
-                    float sqrDst = Vector3.Dot(offset, offset);
-
-                    if (sqrDst <= radius * radius) {
-                        float dst = Mathf.Sqrt(sqrDst);
-                        float brushWeight = 1 - Mathf.SmoothStep(radius * 0.7f, radius, dst);
-
-                        float pointValue = world.SampleTerrain(point);
-                        pointValue += weight * Time.deltaTime * brushWeight;
-                        if (!float.IsFinite(pointValue)){
-                            if (pointValue > 0)
-                                pointValue = 100;
-                            else
-                                pointValue = -100;
-                        }
-
-                        Vector3Int[] chunks = world.SetTerrainAtPoint(point, pointValue);
-                        foreach (Vector3Int i in chunks) {
-                            if (!chunksToReload.Contains(i))
-                                chunksToReload.Add(i);
-                        }
-                    }
-                }
-            }
-        }
-
-        foreach (Vector3Int i in chunksToReload) {
-            // Debug.Log("Final: " + i.ToString());
-            world.chunks[i].RegenerateMesh();
-        }
-    }
-
-    void OnDrawGizmos() {
-        
     }
 }
 

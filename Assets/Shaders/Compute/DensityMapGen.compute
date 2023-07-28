@@ -1,0 +1,16 @@
+#pragma kernel GetDensityMap
+
+RWTexture3D<float> densityMap;
+int textureSize;
+float3 chunkCoords;
+int chunkSize;
+
+float planetRadius;
+float noiseHeightMultiplier;
+float noiseScale;
+
+
+[numthreads(8,8,8)]
+void GetDensityMap(uint3 id : SV_DispatchThreadID) {
+    
+}

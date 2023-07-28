@@ -8,7 +8,7 @@ struct Triangle {
 };
 
 AppendStructuredBuffer<Triangle> triangles;
-StructuredBuffer<float> densityMap;
+RWTexture3D<float> densityMap;
 
 int NumPointsPerAxis;
 float isoLevel;

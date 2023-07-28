@@ -1,0 +1,9 @@
+#pragma kernel EditTexture
+
+RWTexture3D<float> densityMap;
+
+[numthreads(8,8,8)]
+void EditTexture (uint3 id : SV_DispatchThreadID)
+{
+    Result[id] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+}

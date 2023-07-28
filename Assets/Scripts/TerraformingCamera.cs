@@ -47,46 +47,7 @@ public class TerraformingCamera : MonoBehaviour {
 
         if (Physics.Raycast(_cam.ScreenPointToRay(Input.mousePosition), out hit, 1000)) {
             _hitPoint = hit.point;
-            DrawSphere(_hitPoint, brushSize, brushWeight * (add ? 1f : -1f));
-        }
-    }
-
-    void DrawSphere(Vector3 originPoint, float radius, float weight) {
-        List<Vector3Int> chunksToReload = new List<Vector3Int>();
-
-        for (float x = originPoint.x - (radius * 2); x < originPoint.x + (radius * 2); x += 1) {
-            for (float y = originPoint.y - (radius * 2); y < originPoint.y + (radius * 2); y += 1) {
-                for (float z = originPoint.z - (radius * 2); z < originPoint.z + (radius * 2); z += 1) {
-                    Vector3 point = new Vector3(x, y, z);
-                    Vector3 offset = point - originPoint;
-                    float sqrDst = Vector3.Dot(offset, offset);
-
-                    if (sqrDst <= radius * radius) {
-                        float dst = Mathf.Sqrt(sqrDst);
-                        float brushWeight = 1 - Mathf.SmoothStep(radius * 0.7f, radius, dst);
-
-                        float pointValue = world.SampleTerrain(point);
-                        pointValue += weight * Time.deltaTime * brushWeight;
-                        if (!float.IsFinite(pointValue)){
-                            if (pointValue > 0)
-                                pointValue = 100;
-                            else
-                                pointValue = -100;
-                        }
-
-                        Vector3Int[] chunks = world.SetTerrainAtPoint(point, pointValue);
-                        foreach (Vector3Int i in chunks) {
-                            if (!chunksToReload.Contains(i))
-                                chunksToReload.Add(i);
-                        }
-                    }
-                }
-            }
-        }
-
-        foreach (Vector3Int i in chunksToReload) {
-            // Debug.Log("Final: " + i.ToString());
-            world.chunks[i].RegenerateMesh();
+            world.Terraform(_hitPoint, brushSize, brushWeight * (add ? 1f : -1f));
         }
     }
 }
