@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -125,6 +126,7 @@ public class World : MonoBehaviour
             Mathf.FloorToInt(point.z / chunkSize)
         );
     }
+    
     public Point[] GetChunksOfPoint(Vector3 point) {
         List<Point> pointsAndChunks = new List<Point>();
 
@@ -179,7 +181,23 @@ public class World : MonoBehaviour
 
     public void Terraform(Vector3 point, float radius, float weight) {
         timer_terraformingTime.Start();
-        Point[] points = GetChunksOfPoint(point);
+        
+        Point[] points = GetChunksOfPoint(point + (Vector3) Constants.CornerTable[0] * radius)
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[1] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[2] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[3] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[4] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[5] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[6] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[7] * radius))
+                  .ToArray();
+        
+        foreach(Point p in points) {
+            if (!chunks.ContainsKey(p.chunkIndex))
+                GenerateChunk(p.chunkIndex);
+            chunks[p.chunkIndex].Terraform(p.point, radius, weight);
+        }
+
         timer_terraformingTime.Stop();
         terraformingAverage = ((terraformingAverage * numTerraformCalls) + timer_terraformingTime.ElapsedMilliseconds) / (numTerraformCalls + 1);
         numTerraformCalls++;

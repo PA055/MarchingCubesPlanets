@@ -7,7 +7,7 @@ using UnityEngine;
 public class Chunk : MonoBehaviour
 {
     [Range(1, 8)]
-    public int LevelOfDetail = 1;
+    public int PointsPerUnit = 1;
     public bool showBorder = false;
     [HideInInspector]
     public World world;
@@ -22,11 +22,12 @@ public class Chunk : MonoBehaviour
 
     ComputeShader marchingCubesShader;
     ComputeShader densityMapShader;
+    ComputeShader terraformShader;
 
     ComputeBuffer triBuffer;
     ComputeBuffer triCountBuffer;
 
-    RenderTexture densityTexture;
+    public  RenderTexture densityTexture;
 
     [HideInInspector]
     public bool isGenerated = false;
@@ -36,35 +37,25 @@ public class Chunk : MonoBehaviour
     System.Diagnostics.Stopwatch timer_PopulateTerrrainMap;
 
 
-    public int PointsPerUnit {
-        get {
-            return Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail];
-        }
-    }
-
     public int PointsPerAxis { 
         get {
-            return world.chunkSize * Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail] + 1;
+            return world.chunkSize * this.PointsPerUnit + 1;
         }
     }
 
     public float VoxelWidth {
         get {
-            return 1.0f / Constants.VoxelsPerUnitAtLODValue[this.LevelOfDetail];
+            return 1.0f / this.PointsPerUnit;
         }
-    }
-
-    void OnDrawGizmos() {
-        if (showBorder || world.showChunkOutline)
-            Gizmos.DrawWireCube(transform.position + Vector3.one * (world.chunkSize / 2f), Vector3.one * world.chunkSize);
     }
 
     public void Init(World world, Vector3Int chunkIndex, int LOD) {
         this.world = world;
         this.chunkIndex = chunkIndex;
-        this.LevelOfDetail = LOD;
+        this.PointsPerUnit = LOD;
         this.marchingCubesShader = world.marchingCubesShader;
         this.densityMapShader = world.densityMapShader;
+        this.terraformShader = world.terraformShader;
 
         timer_MarchingCubesAlgorithm = new System.Diagnostics.Stopwatch();
         timer_ProcessTriangles = new System.Diagnostics.Stopwatch();
@@ -78,6 +69,11 @@ public class Chunk : MonoBehaviour
         
         CreateBuffers();
         PopulateTerrainMap();
+    }
+
+    void OnDrawGizmos() {
+        if (showBorder || world.showChunkOutline)
+            Gizmos.DrawWireCube(transform.position + Vector3.one * (world.chunkSize / 2f), Vector3.one * world.chunkSize);
     }
 
     public void PrintTimers() {
@@ -98,7 +94,7 @@ public class Chunk : MonoBehaviour
         int numVoxels = (PointsPerAxis + 1) * (PointsPerAxis + 1) * (PointsPerAxis + 1);
         int maxTriangleCount = numVoxels * 5;
 
-        Create3DTexture(ref densityTexture, PointsPerAxis, "Density Texture");
+        Create3DTexture(ref densityTexture, PointsPerAxis + 1, "Density Texture");
         triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
         triBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
     }
@@ -122,7 +118,7 @@ public class Chunk : MonoBehaviour
 
 			texture.Create();
 		}
-		texture.wrapMode = TextureWrapMode.Mirror;
+		texture.wrapMode = TextureWrapMode.Clamp;
 		texture.filterMode = FilterMode.Bilinear;
 		texture.name = name;
 	}
@@ -146,7 +142,7 @@ public class Chunk : MonoBehaviour
         densityMapShader.SetTexture(kernel, "densityMap", densityTexture);
         densityMapShader.SetInt("textureSize", densityTexture.width);
         densityMapShader.SetVector("chunkCoords", (Vector3) chunkIndex);
-        densityMapShader.SetInt("chunkSize", world.chunkSize);
+        densityMapShader.SetFloat("chunkSize", world.chunkSize);
 
         densityMapShader.SetFloat("planetRadius", world.terrainManager.planetRadius);
         densityMapShader.SetFloat("noiseHeightMultiplier", world.terrainManager.noiseHeightMultiplier);
@@ -238,6 +234,21 @@ public class Chunk : MonoBehaviour
         Mesh mesh = new Mesh();
         meshFilter.mesh = mesh;
         meshCollider.sharedMesh = mesh;
+    }
+
+    public void Terraform(Vector3 point, float radius, float weight) {
+        int kernel = terraformShader.FindKernel("EditTexture");
+
+        terraformShader.SetTexture(kernel, "densityMap", densityTexture);
+        terraformShader.SetInt("chunkSize", world.chunkSize);
+        terraformShader.SetVector("brushCenter", point);
+        terraformShader.SetFloat("brushRadius", radius);
+        terraformShader.SetFloat("brushWeight", weight);
+        terraformShader.SetFloat("deltaTime", Time.deltaTime);
+
+        terraformShader.Dispatch(kernel, Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f));
+
+        RegenerateMesh();
     }
 
     public Vector3 GetLocalCoordsFromWorldCoords(Vector3 point) {

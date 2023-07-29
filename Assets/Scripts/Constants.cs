@@ -4,12 +4,6 @@ using UnityEngine;
 
 public static class Constants
 {
-
-
-
-	public static readonly int[] VoxelsPerUnitAtLODValue = new int[] {
-		-1, 1, 2, 4, 6, 8, 10, 12, 14, 16
-	};
     public static readonly Vector3Int[] CornerTable = new Vector3Int[8] {
 
 		new Vector3Int(0, 0, 1),

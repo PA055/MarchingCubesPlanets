@@ -1,5 +1,5 @@
 #pragma kernel ProcessCube
-#include "/Includes/MarchTables.compute"
+#include "Assets\Shaders\Compute\Includes\MarchingTables.compute"
 
 struct Triangle {
     float3 vertexA;
@@ -13,15 +13,13 @@ RWTexture3D<float> densityMap;
 int NumPointsPerAxis;
 float isoLevel;
 bool smoothTerrain;
-// float3 chunkCoord;
 
 int IndexFromCoord(int3 coord) {
 	return coord.x + (coord.y + coord.z * (NumPointsPerAxis + 1)) * (NumPointsPerAxis + 1);
 }
 
 float SampleDensity(int3 coord) {
-    int index = IndexFromCoord(coord);
-    return densityMap[index];
+    return densityMap[coord];
 }
 
 float3 createVertex(int3 pointA, int3 pointB) {
@@ -42,6 +40,7 @@ float3 createVertex(int3 pointA, int3 pointB) {
 
 [numthreads(8,8,8)]
 void ProcessCube (int3 id : SV_DispatchThreadID) {
+    
     if (id.x >= NumPointsPerAxis || id.y >= NumPointsPerAxis || id.z >= NumPointsPerAxis) {
         return;
     }
@@ -63,7 +62,7 @@ void ProcessCube (int3 id : SV_DispatchThreadID) {
     for (int i = 0; i < 16; i += 3) {
         if (edgeIndices[i] == -1) { break; }
 
-        int edgeIndexA = edgeIndices[i];
+        int edgeIndexA = edgeIndices[i+0];
 		int a0 = cornerIndexAFromEdge[edgeIndexA];
 		int a1 = cornerIndexBFromEdge[edgeIndexA];
 

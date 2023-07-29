@@ -1,9 +1,32 @@
 #pragma kernel EditTexture
 
 RWTexture3D<float> densityMap;
+int chunkSize;
+float3 brushCenter;
+float brushRadius;
+float brushWeight;
+float deltaTime;
+
+float smoothstep(float minVal, float maxVal, float t) {
+	t = saturate((t-minVal) / (maxVal - minVal));
+	return t * t * (3 - 2 * t);
+}
 
 [numthreads(8,8,8)]
-void EditTexture (uint3 id : SV_DispatchThreadID)
-{
-    Result[id] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+void EditTexture (uint3 id : SV_DispatchThreadID) {
+    if (id.x > chunkSize + 1 || id.y > chunkSize + 1 || id.z > chunkSize + 1) {
+        return;
+    }
+    if (id.x < 0 || id.y < 0 || id.z < 0) {
+        return;
+    }
+
+    int3 offset = id - brushCenter;
+	int sqrDst = dot(offset, offset);
+
+	if (sqrDst <= brushRadius * brushRadius) {
+		float dst = sqrt(sqrDst);
+		float weight = 1-smoothstep(brushRadius * 0.7, brushRadius, dst);
+		densityMap[id] += weight * deltaTime * brushWeight;
+	}
 }
