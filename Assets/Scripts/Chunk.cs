@@ -21,7 +21,6 @@ public class Chunk : MonoBehaviour
     List<int> triangles = new List<int>();
 
     ComputeShader marchingCubesShader;
-    ComputeShader densityMapShader;
     ComputeShader terraformShader;
 
     ComputeBuffer triBuffer;
@@ -54,7 +53,6 @@ public class Chunk : MonoBehaviour
         this.chunkIndex = chunkIndex;
         this.PointsPerUnit = LOD;
         this.marchingCubesShader = world.marchingCubesShader;
-        this.densityMapShader = world.densityMapShader;
         this.terraformShader = world.terraformShader;
 
         timer_MarchingCubesAlgorithm = new System.Diagnostics.Stopwatch();
@@ -138,18 +136,8 @@ public class Chunk : MonoBehaviour
     public void PopulateTerrainMap() {
         timer_PopulateTerrrainMap.Start();
 
-        int kernel = densityMapShader.FindKernel("GetDensityMap");
-        densityMapShader.SetTexture(kernel, "densityMap", densityTexture);
-        densityMapShader.SetInt("textureSize", densityTexture.width);
-        densityMapShader.SetVector("chunkCoords", (Vector3) chunkIndex);
-        densityMapShader.SetFloat("chunkSize", world.chunkSize);
-
-        densityMapShader.SetFloat("planetRadius", world.terrainManager.planetRadius);
-        densityMapShader.SetFloat("noiseHeightMultiplier", world.terrainManager.noiseHeightMultiplier);
-        densityMapShader.SetFloat("noiseScale", world.terrainManager.noiseScale);
-
-        densityMapShader.Dispatch(kernel, Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f));
-
+        world.terrainManager.PopulateTerrainMap(ref densityTexture, chunkIndex);
+        
         timer_PopulateTerrrainMap.Stop();
     }
 
@@ -244,7 +232,8 @@ public class Chunk : MonoBehaviour
         terraformShader.SetVector("brushCenter", point);
         terraformShader.SetFloat("brushRadius", radius);
         terraformShader.SetFloat("brushWeight", weight);
-        terraformShader.SetFloat("deltaTime", Time.deltaTime);
+        // terraformShader.SetFloat("deltaTime", Time.deltaTime);
+        terraformShader.SetFloat("deltaTime", 1f);
 
         terraformShader.Dispatch(kernel, Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f));
 

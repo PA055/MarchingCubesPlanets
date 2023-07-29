@@ -28,10 +28,10 @@ public class TerraformingCamera : MonoBehaviour {
             _cam = GetComponent<Camera>();
         
         if (player.playerMode == PlayerMode.Static) {
-            if (Input.GetMouseButton(0)) {
-                Terraform(true);
-            } else if (Input.GetMouseButton(1))
+            if (Input.GetMouseButtonDown(0))
                 Terraform(false);
+            else if (Input.GetMouseButtonDown(1))
+                Terraform(true);
         }
     }
 

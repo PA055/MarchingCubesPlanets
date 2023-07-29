@@ -1,0 +1,24 @@
+#pragma kernel GetDensityMap
+
+RWTexture3D<float> densityMap;
+int textureSize;
+float3 chunkCoords;
+float chunkSize;
+
+float planetRadius;
+
+
+float3 GetWorldSpaceOfPoint(int3 index) {
+    return index + (chunkCoords * chunkSize);
+}
+
+[numthreads(8,8,8)]
+void GetDensityMap(uint3 id : SV_DispatchThreadID) {
+    float halfS = planetRadius / 4;
+	float maxD = length(float3(halfS,halfS,halfS));
+
+	float fudge = 1;
+
+	float density = length(GetWorldSpaceOfPoint(id)) / (maxD + fudge) - 0.5;
+    densityMap[id] = density;
+}

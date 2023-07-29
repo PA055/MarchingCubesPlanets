@@ -26,7 +26,8 @@ void EditTexture (uint3 id : SV_DispatchThreadID) {
 
 	if (sqrDst <= brushRadius * brushRadius) {
 		float dst = sqrt(sqrDst);
-		float weight = 1-smoothstep(brushRadius * 0.7, brushRadius, dst);
+		// float weight = 1-smoothstep(brushRadius * 0.7, brushRadius, dst);
+        float weight = 1;
 		densityMap[id] += weight * deltaTime * brushWeight;
 	}
 }

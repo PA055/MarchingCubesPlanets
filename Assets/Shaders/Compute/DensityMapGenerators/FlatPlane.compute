@@ -1,14 +1,11 @@
 #pragma kernel GetDensityMap
-#include "Assets\Shaders\Compute\Includes\NoiseFunctions.compute"
 
 RWTexture3D<float> densityMap;
 int textureSize;
 float3 chunkCoords;
 float chunkSize;
 
-float planetRadius;
-float noiseHeightMultiplier;
-float noiseScale;
+float planeHeight;
 
 
 float3 GetWorldSpaceOfPoint(int3 index) {
@@ -17,6 +14,5 @@ float3 GetWorldSpaceOfPoint(int3 index) {
 
 [numthreads(8,8,8)]
 void GetDensityMap(uint3 id : SV_DispatchThreadID) {
-    // densityMap[id] = snoise(GetWorldSpaceOfPoint(id) * 0.05f) + 0.5f;
-    densityMap[id] = GetWorldSpaceOfPoint(id).y;
+    densityMap[id] = GetWorldSpaceOfPoint(id).y + planeHeight + 0.5f;
 }

@@ -21,7 +21,6 @@ public class World : MonoBehaviour
 
     [Header("Compute Shaders")]
     public ComputeShader marchingCubesShader;
-    public ComputeShader densityMapShader;
     public ComputeShader terraformShader;
 
     [Header("Debug Settings")]
@@ -190,6 +189,12 @@ public class World : MonoBehaviour
                   .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[5] * radius))
                   .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[6] * radius))
                   .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[7] * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.up * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.down * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.left * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.right * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.forward * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.back * radius))
                   .ToArray();
         
         foreach(Point p in points) {
