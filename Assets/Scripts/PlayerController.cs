@@ -71,27 +71,27 @@ public class PlayerController : MonoBehaviour
         Quaternion localRotation = Quaternion.Euler(0f, rotation.y, 0f);
         transform.rotation = transform.rotation * localRotation;
 
-        RaycastHit hitInfo;
-        if (Input.GetMouseButton(0)) {
-            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
-                world.Terraform(hitInfo.point, brushSize, brushWeight);
-                if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
-                    terraTest = true;
-            }
-        }
+        // RaycastHit hitInfo;
+        // if (Input.GetMouseButton(0)) {
+        //     if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
+        //         world.Terraform(hitInfo.point, brushSize, brushWeight);
+        //         if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
+        //             terraTest = true;
+        //     }
+        // }
 
-        if (Input.GetMouseButton(1)) {
-            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
-                world.Terraform(hitInfo.point, brushSize, -brushWeight);
-                if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
-                    terraTest = true;
-            }
-        }
+        // if (Input.GetMouseButton(1)) {
+        //     if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
+        //         world.Terraform(hitInfo.point, brushSize, -brushWeight);
+        //         if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
+        //             terraTest = true;
+        //     }
+        // }
 
-        if (terraTest) {
-            terraTest = false;
-            TerraTest();
-        }
+        // if (terraTest) {
+        //     terraTest = false;
+        //     TerraTest();
+        // }
     }
 
     void TerraTest() {
@@ -130,28 +130,27 @@ public class PlayerController : MonoBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, q, 1);
             }
 
-            if (grounded) {
-                // Calculate how fast we should be moving
-                Vector3 forwardDir = Vector3.Cross(transform.up, -playerCamera.transform.right).normalized;
-                Vector3 rightDir = Vector3.Cross(transform.up, playerCamera.transform.forward).normalized;
-                Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
+            Vector3 forwardDir = Vector3.Cross(transform.up, -playerCamera.transform.right).normalized;
+            Vector3 rightDir = Vector3.Cross(transform.up, playerCamera.transform.forward).normalized;
+            Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
 
-                Vector3 velocity = transform.InverseTransformDirection(r.velocity);
-                velocity.y = 0;
-                velocity = transform.TransformDirection(velocity);
-                Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
-                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
-                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-                velocityChange.y = 0;
-                velocityChange = transform.TransformDirection(velocityChange);
+            // Calculate how fast we should be moving
 
-                r.AddForce(velocityChange, ForceMode.VelocityChange);
+            Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+            velocity.y = 0;
+            velocity = transform.TransformDirection(velocity);
+            Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
+            velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+            velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+            velocityChange.y = 0;
+            velocityChange = transform.TransformDirection(velocityChange);
 
-                if (Input.GetButton("Jump") && canJump)
-                {
-                    r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
-                }
+            r.AddForce(velocityChange, ForceMode.VelocityChange);
+
+            if (Input.GetButton("Jump") && canJump && grounded) {
+                r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
             }
+        
         }
 
         if (playerMode == PlayerMode.Plane) {
@@ -174,32 +173,28 @@ public class PlayerController : MonoBehaviour
         if (playerMode == PlayerMode.Normal) {
             r.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
 
-            if (grounded) {
-                Vector3 forwardDir = playerCamera.transform.forward.normalized;
-                Vector3 rightDir = playerCamera.transform.right.normalized;
-                Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
+            Vector3 forwardDir = playerCamera.transform.forward.normalized;
+            Vector3 rightDir = playerCamera.transform.right.normalized;
+            Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
+            
+            Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+            velocity.y = 0;
+            velocity = transform.TransformDirection(velocity);
+            Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
+            velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+            velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+            velocityChange.y = 0;
+            velocityChange = transform.TransformDirection(velocityChange);
 
-                Vector3 velocity = transform.InverseTransformDirection(r.velocity);
-                velocity.y = 0;
-                velocity = transform.TransformDirection(velocity);
-                Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
-                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
-                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-                velocityChange.y = 0;
-                velocityChange = transform.TransformDirection(velocityChange);
-
-                r.AddForce(velocityChange, ForceMode.VelocityChange);
-
-                if (Input.GetButton("Jump") && canJump)
-                {
-                    r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
-                }
+            r.AddForce(velocityChange, ForceMode.VelocityChange);
+            if (Input.GetButton("Jump") && canJump && grounded) {
+                r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
             }
         }
     }
 
     void LateUpdate() {
-        if (Physics.Raycast(transform.position, -transform.up, 0.1f, terrainMask))
+        if (Physics.Raycast(transform.position, -transform.up, 0.5f, terrainMask))
             grounded = true;
         else
             grounded = false;

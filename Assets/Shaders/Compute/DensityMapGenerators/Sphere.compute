@@ -14,10 +14,10 @@ float3 GetWorldSpaceOfPoint(int3 index) {
 
 [numthreads(8,8,8)]
 void GetDensityMap(uint3 id : SV_DispatchThreadID) {
-    float halfS = planetRadius / 4;
+    float halfS = planetRadius / 2;
 	float maxD = length(float3(halfS,halfS,halfS));
 
-	float fudge = 1;
+	float fudge = 0.1339748f * planetRadius;
 
 	float density = length(GetWorldSpaceOfPoint(id)) / (maxD + fudge) - 0.5;
     densityMap[id] = density;

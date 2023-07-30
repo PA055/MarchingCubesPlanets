@@ -15,6 +15,7 @@ public class TerrainManager : MonoBehaviour
     [Space]
     [Header("Compute Shaders")]
     public ComputeShader sphereShader;
+    public ComputeShader mountainousPlanetShader;
     public ComputeShader flatPlaneShader;
     public ComputeShader pureNoiseShader;
 
@@ -23,13 +24,23 @@ public class TerrainManager : MonoBehaviour
 
     [ConditionalShow(nameof(noiseMode), 0)]
     public float planetRadius = 20f;
-
+    
 
     [ConditionalShow(nameof(noiseMode), 1)]
-    public float scale = 0.05f;
+    public float basePlanetRadius = 20f;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float noiseScale = 50f;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float noiseFrequency = 0.05f;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float heightMultiplier = 1;
 
 
     [ConditionalShow(nameof(noiseMode), 2)]
+    public float scale = 0.05f;
+
+
+    [ConditionalShow(nameof(noiseMode), 3)]
     public float height = 0f;
 
     public void PopulateTerrainMap(ref RenderTexture densityTexture, Vector3Int chunkIndex)
@@ -37,6 +48,8 @@ public class TerrainManager : MonoBehaviour
         ComputeShader densityMapShader;
         if (noiseMode == NoiseMode.Sphere)
             densityMapShader = sphereShader;
+        else if (noiseMode == NoiseMode.MountainousPlanet)
+            densityMapShader = mountainousPlanetShader;
         else if (noiseMode == NoiseMode.PureNoise)
             densityMapShader = pureNoiseShader;
         else
@@ -50,6 +63,11 @@ public class TerrainManager : MonoBehaviour
 
         if (noiseMode == NoiseMode.Sphere) {
             densityMapShader.SetFloat("planetRadius", planetRadius);
+        } else if (noiseMode == NoiseMode.MountainousPlanet) {
+            densityMapShader.SetFloat("planetRadius", basePlanetRadius);
+            densityMapShader.SetFloat("noiseFrequency", noiseFrequency);
+            densityMapShader.SetFloat("noiseScale", noiseScale);
+            densityMapShader.SetFloat("heightMultiplier", heightMultiplier);
         } else if (noiseMode == NoiseMode.PureNoise) {
             densityMapShader.SetFloat("noiseScale", scale);
         } else {
@@ -62,6 +80,7 @@ public class TerrainManager : MonoBehaviour
 
 public enum NoiseMode {
     Sphere,
+    MountainousPlanet,
     PureNoise,
     FlatPlane
 }
