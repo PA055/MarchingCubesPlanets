@@ -10,6 +10,7 @@ float planetRadius;
 float noiseFrequency;
 float noiseScale;
 float heightMultiplier;
+float heightModifier;
 
 float3 GetWorldSpaceOfPoint(int3 index) {
     return index + (chunkCoords * chunkSize);

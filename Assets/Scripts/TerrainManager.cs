@@ -34,6 +34,8 @@ public class TerrainManager : MonoBehaviour
     public float noiseFrequency = 0.05f;
     [ConditionalShow(nameof(noiseMode), 1)]
     public float heightMultiplier = 1;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float heightModifier = 1;
 
 
     [ConditionalShow(nameof(noiseMode), 2)]
