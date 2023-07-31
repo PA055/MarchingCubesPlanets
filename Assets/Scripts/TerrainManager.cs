@@ -2,108 +2,87 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using System;
 
 public class TerrainManager : MonoBehaviour
 {
+    public World world;
+
     public NoiseMode noiseMode;
     public int seed = 0;
     public bool showGizmos;
+
+    [Space]
+    [Header("Compute Shaders")]
+    public ComputeShader sphereShader;
+    public ComputeShader mountainousPlanetShader;
+    public ComputeShader flatPlaneShader;
+    public ComputeShader pureNoiseShader;
 
     [Space]
     [Header("Special Settings")]
 
     [ConditionalShow(nameof(noiseMode), 0)]
     public float planetRadius = 20f;
-    [ConditionalShow(nameof(noiseMode), 0)]
-    public float noiseScale = 1f;
-    [ConditionalShow(nameof(noiseMode), 0)]
-    public float noiseHeightMultiplier = 1f;
-
+    
 
     [ConditionalShow(nameof(noiseMode), 1)]
-    public float amplitude = 50f;
+    public float basePlanetRadius = 20f;
     [ConditionalShow(nameof(noiseMode), 1)]
-    public float scale = 0.05f;
+    public float noiseScale = 50f;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float noiseFrequency = 0.05f;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float heightMultiplier = 1;
+    [ConditionalShow(nameof(noiseMode), 1)]
+    public float heightModifier = 1;
 
 
     [ConditionalShow(nameof(noiseMode), 2)]
+    public float scale = 0.05f;
+
+
+    [ConditionalShow(nameof(noiseMode), 3)]
     public float height = 0f;
-    
-    
-    public Sphere[] spheres;
 
-    public float GetSphereNoiseAtPoint(int numLayers, float lacunarity, float persistence, float scale, Vector3 point) {
-        float noiseValue = 0;
-        float frequency = scale / 100;
-        float amplitude = 1;
+    public void PopulateTerrainMap(ref RenderTexture densityTexture, Vector3Int chunkIndex)
+    {
+        ComputeShader densityMapShader;
+        if (noiseMode == NoiseMode.Sphere)
+            densityMapShader = sphereShader;
+        else if (noiseMode == NoiseMode.MountainousPlanet)
+            densityMapShader = mountainousPlanetShader;
+        else if (noiseMode == NoiseMode.PureNoise)
+            densityMapShader = pureNoiseShader;
+        else
+            densityMapShader = flatPlaneShader;
 
-        for (int i = 0; i < numLayers; i ++) {
-            float n = Mathf.Abs(noise.snoise(point * frequency)*2-1);
-            //n*=n;
-            noiseValue += n * amplitude;
+        int kernel = densityMapShader.FindKernel("GetDensityMap");
+        densityMapShader.SetTexture(kernel, "densityMap", densityTexture);
+        densityMapShader.SetInt("textureSize", densityTexture.width);
+        densityMapShader.SetVector("chunkCoords", (Vector3) chunkIndex);
+        densityMapShader.SetFloat("chunkSize", world.chunkSize);
 
-            amplitude *= persistence;
-            frequency *= lacunarity;
-        }
-
-        return noiseValue;
-    }
-    
-    public float GetTerrainAtPoint(Vector3 point) {
-        float value = 0;
-        if (noiseMode == NoiseMode.PerlinNoise) {
-            value += noise.cnoise(point * scale) * amplitude;
-        } else if (noiseMode == NoiseMode.Sphere) {
-            float maxD = (Vector3.one * planetRadius / 2f).magnitude;
-
-            // float fudge = 1.325f * planetRadius;
-            float fudge = 2.65f;
-            value = (maxD + fudge) / point.magnitude - 0.5f;
-
-            float noise = 0f;
-            if (noiseHeightMultiplier != 0)
-                noise = GetSphereNoiseAtPoint(6, 2, 0.5f, noiseScale, point) * noiseHeightMultiplier;
-
-            value += noise;
-        } else if (noiseMode == NoiseMode.FlatTerrain) {
-            value += height + 1f - point.y;
+        if (noiseMode == NoiseMode.Sphere) {
+            densityMapShader.SetFloat("planetRadius", planetRadius);
+        } else if (noiseMode == NoiseMode.MountainousPlanet) {
+            densityMapShader.SetFloat("planetRadius", basePlanetRadius);
+            densityMapShader.SetFloat("noiseFrequency", noiseFrequency);
+            densityMapShader.SetFloat("noiseScale", noiseScale);
+            densityMapShader.SetFloat("heightMultiplier", heightMultiplier);
+        } else if (noiseMode == NoiseMode.PureNoise) {
+            densityMapShader.SetFloat("noiseScale", scale);
         } else {
-            value += 0.0f;
+            densityMapShader.SetFloat("planeHeight", height);
         }
-        foreach (Sphere sphere in spheres) {
-            value += (sphere.radius * sphere.radius) / (point - sphere.center).sqrMagnitude * sphere.strength;
-        }
-        return value;
-    }
 
-    void OnDrawGizmos() {
-        if (!showGizmos)
-            return;
-
-        if (noiseMode == NoiseMode.Sphere) 
-            Gizmos.DrawSphere(Vector3.zero, planetRadius);
-
-        foreach (Sphere sphere in spheres) {
-            Gizmos.DrawSphere(sphere.center, sphere.radius);
-        }
+        densityMapShader.Dispatch(kernel, Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f), Mathf.CeilToInt(densityTexture.width / 8f));
     }
 }
 
 public enum NoiseMode {
     Sphere,
-    PerlinNoise,
-    FlatTerrain
-}
-
-[System.Serializable]
-public class Sphere {
-    public float radius;
-    public float strength;
-    public Vector3 center;
-
-    public Sphere() {
-        radius = 1f;
-        center = Vector3.zero;
-        strength = 1f;
-    }
+    MountainousPlanet,
+    PureNoise,
+    FlatPlane
 }

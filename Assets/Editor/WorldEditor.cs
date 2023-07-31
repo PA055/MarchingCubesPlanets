@@ -18,7 +18,7 @@ public class WorldEditor : Editor {
         if (!Application.isPlaying) {
             if (GUILayout.Button("Regenerate Chunks Near Player")) {
                 world.ClearChunks();
-                world.GenerateChunks();
+                world.UpdateChunks();
             }
         }
 

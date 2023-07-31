@@ -1,0 +1,18 @@
+#pragma kernel GetDensityMap
+
+RWTexture3D<float> densityMap;
+int textureSize;
+float3 chunkCoords;
+float chunkSize;
+
+float planeHeight;
+
+
+float3 GetWorldSpaceOfPoint(int3 index) {
+    return index + (chunkCoords * chunkSize);
+}
+
+[numthreads(8,8,8)]
+void GetDensityMap(uint3 id : SV_DispatchThreadID) {
+    densityMap[id] = GetWorldSpaceOfPoint(id).y + planeHeight + 0.5f;
+}

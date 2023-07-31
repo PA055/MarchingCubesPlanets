@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,9 +12,6 @@ public class World : MonoBehaviour
     public Material material;
     public bool smoothTerrain = true;
     public bool flatShaded = false;
-    public bool useComputeShader;
-    [ConditionalHide(nameof(useComputeShader), false)]
-    public bool useOldCpu;
 
     [Header("Chunk Generation Settings")]
     public GameObject player;
@@ -23,29 +21,22 @@ public class World : MonoBehaviour
 
     [Header("Compute Shaders")]
     public ComputeShader marchingCubesShader;
-
+    public ComputeShader terraformShader;
 
     [Header("Debug Settings")]
-    public GameObject terrainPointPrefab;
-    public bool generateGizmos = true;
     public bool showChunkOutline = true;
-    
-    [Space]
-
-
-    [HideInInspector]
-    public bool showCube = false;
-    [HideInInspector]
-    public bool showPoints = false;
-    [HideInInspector]
-    public bool showGizmos = false;
 
     [HideInInspector]
     public Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
 
+    System.Diagnostics.Stopwatch timer_terraformingTime;
+    long terraformingAverage;
+    int numTerraformCalls;
+
     void Start() {
+        timer_terraformingTime = new System.Diagnostics.Stopwatch();
         ClearChunks();
-        GenerateChunks();
+        UpdateChunks();
     }
 
     void Update() {
@@ -58,7 +49,7 @@ public class World : MonoBehaviour
                     chunk.gameObject.SetActive(false);
                 }
             }
-            GenerateChunks();
+            UpdateChunks();
         }
     }
 
@@ -69,7 +60,27 @@ public class World : MonoBehaviour
         chunks.Clear();
     }
 
-    public void GenerateChunks() {
+    public void PrintAllTimers() {
+        long[] totals = new long[3] {0, 0, 0};
+        foreach (Vector3Int chunkPos in chunks.Keys) {
+            long[] chunkTotals = chunks[chunkPos].GetTimerValues();
+            totals[0] += chunkTotals[0];
+            totals[1] += chunkTotals[1];
+            totals[2] += chunkTotals[2];
+        }
+
+        Debug.Log("Average Populate Terrain Map: " + totals[2] / chunks.Count + " ms");
+        Debug.Log("Average Run Marching Cubes Algorithm: " + totals[0] / chunks.Count + " ms");
+        Debug.Log("Average Process Triangle Data: " + totals[1] / chunks.Count + " ms");
+        Debug.Log("Average Terraforming Time: " + terraformingAverage + " ms");
+        
+        Debug.Log("Total Populate Terrain Map: " + totals[2] + " ms");
+        Debug.Log("Total Run Marching Cubes Algorithm: " + totals[0] + " ms");
+        Debug.Log("Total Process Triangle Data: " + totals[1] + " ms");
+        Debug.Log("Total Terraforming Time: " + terraformingAverage * numTerraformCalls + " ms");
+    }
+
+    public void UpdateChunks() {
         Vector3Int playerChunkCoords = GetChunkCoordOfPoint(player.transform.position);
 
         for (int x = playerChunkCoords.x - halfRenderDistanceInChunks; x < playerChunkCoords.x + halfRenderDistanceInChunks; x++) {
@@ -92,27 +103,6 @@ public class World : MonoBehaviour
         }
     }
 
-    public void PrintAllTimers() {
-        long[] totals = new long[4] {0, 0, 0, 0};
-        foreach (Vector3Int chunkPos in chunks.Keys) {
-            long[] chunkTotals = chunks[chunkPos].GetTimerValues();
-            totals[0] += chunkTotals[0];
-            totals[1] += chunkTotals[1];
-            totals[2] += chunkTotals[2];
-            totals[3] += chunkTotals[3];
-        }
-
-        Debug.Log("Average Populate Terrain Map: " + totals[2] / chunks.Count + " ms");
-        Debug.Log("Average Generate Terrain Buffer: " + totals[3] / chunks.Count + " ms");
-        Debug.Log("Average Run Marching Cubes Algorithm: " + totals[0] / chunks.Count + " ms");
-        Debug.Log("Average Process Triangle Data: " + totals[1] / chunks.Count + " ms");
-        
-        Debug.Log("Total Populate Terrain Map: " + totals[2] + " ms");
-        Debug.Log("Total Generate Terrain Buffer: " + totals[3] + " ms");
-        Debug.Log("Total Run Marching Cubes Algorithm: " + totals[0] + " ms");
-        Debug.Log("Total Process Triangle Data: " + totals[1] + " ms");
-    }
-
     Chunk GenerateChunk(Vector3Int chunkCoord) {
         GameObject chunkHolder = new GameObject("Chunk at x: " + chunkCoord.x + ", y: " + chunkCoord.y + ", z: " + chunkCoord.z);
         chunkHolder.layer = LayerMask.NameToLayer("Terrain");
@@ -123,7 +113,7 @@ public class World : MonoBehaviour
         chunkHolder.transform.position = chunkCoord * chunkSize;
         chunkHolder.AddComponent<Chunk>();
         Chunk chunk = chunkHolder.GetComponent<Chunk>();
-        chunk.Init(this, chunkCoord, material, 1, marchingCubesShader);
+        chunk.Init(this, chunkCoord, 1);
         chunks.Add(chunkCoord, chunk);
         return chunk;
     }
@@ -135,32 +125,7 @@ public class World : MonoBehaviour
             Mathf.FloorToInt(point.z / chunkSize)
         );
     }
-
-    public float SampleTerrain(Vector3 point) {
-        Vector3 pointInChunk = new Vector3Int();
-        Vector3Int chunkIndex = new Vector3Int();
-
-        chunkIndex.x = Mathf.FloorToInt(point.x / chunkSize);
-        pointInChunk.x = point.x % chunkSize;
-        if (pointInChunk.x < 0)
-            pointInChunk.x += chunkSize;
-
-        chunkIndex.y = Mathf.FloorToInt(point.y / chunkSize);
-        pointInChunk.y = point.y % chunkSize;
-        if (pointInChunk.y < 0)
-            pointInChunk.y += chunkSize;
-
-        chunkIndex.z = Mathf.FloorToInt(point.z / chunkSize);
-        pointInChunk.z = point.z % chunkSize;
-        if (pointInChunk.z < 0)
-            pointInChunk.z += chunkSize;
-
-        if (chunks.ContainsKey(chunkIndex)) {
-            return chunks[chunkIndex].GetTerrainAtPoint(pointInChunk);
-        } else
-            return GetGeneratedTerrainAtPoint(point);
-    }
-
+    
     public Point[] GetChunksOfPoint(Vector3 point) {
         List<Point> pointsAndChunks = new List<Point>();
 
@@ -213,27 +178,34 @@ public class World : MonoBehaviour
         return pointsAndChunks.ToArray();
     }
 
-    public Vector3Int[] SetTerrainAtPoint(Vector3 point, float value) {
-        Point[] points = GetChunksOfPoint(point);
-        List<Vector3Int> chunkIndexes = new List<Vector3Int>();
-        foreach (Point p in points) {
-            if (!chunks.ContainsKey(p.chunkIndex)) 
+    public void Terraform(Vector3 point, float radius, float weight) {
+        timer_terraformingTime.Start();
+        
+        Point[] points = GetChunksOfPoint(point + (Vector3) Constants.CornerTable[0] * radius)
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[1] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[2] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[3] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[4] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[5] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[6] * radius))
+                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[7] * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.up * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.down * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.left * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.right * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.forward * radius))
+                  .Union(GetChunksOfPoint(point + Vector3.back * radius))
+                  .ToArray();
+        
+        foreach(Point p in points) {
+            if (!chunks.ContainsKey(p.chunkIndex))
                 GenerateChunk(p.chunkIndex);
-            
-            chunks[p.chunkIndex].SetTerrainAtIndex(new Vector3Int(
-                Mathf.FloorToInt(p.point.x * chunks[p.chunkIndex].PointsPerUnit),
-                Mathf.FloorToInt(p.point.y * chunks[p.chunkIndex].PointsPerUnit),
-                Mathf.FloorToInt(p.point.z * chunks[p.chunkIndex].PointsPerUnit)
-            ), value);
-
-            chunkIndexes.Add(p.chunkIndex);
+            chunks[p.chunkIndex].Terraform(p.point, radius, weight);
         }
 
-        return chunkIndexes.ToArray();
-    }
-
-    public float GetGeneratedTerrainAtPoint(Vector3 point) {
-        return terrainManager.GetTerrainAtPoint(point);
+        timer_terraformingTime.Stop();
+        terraformingAverage = ((terraformingAverage * numTerraformCalls) + timer_terraformingTime.ElapsedMilliseconds) / (numTerraformCalls + 1);
+        numTerraformCalls++;
     }
 }
 
