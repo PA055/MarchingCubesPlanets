@@ -97,8 +97,9 @@ public class Chunk : MonoBehaviour
         triBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
     }
 
-    void Create3DTexture(ref RenderTexture texture, int size, string name) {
-		var format = UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat;
+    void Create3DTexture(ref RenderTexture texture, int size, string name) { 
+        var format = SystemInfo.GetCompatibleFormat(UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat, UnityEngine.Experimental.Rendering.FormatUsage.SetPixels);
+        Debug.LogWarning(format.ToString());
 		if (texture == null || !texture.IsCreated() || texture.width != size || texture.height != size || texture.volumeDepth != size || texture.graphicsFormat != format)
 		{
 			//Debug.Log ("Create tex: update noise: " + updateNoise);
