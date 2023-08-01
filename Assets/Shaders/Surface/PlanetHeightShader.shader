@@ -3,8 +3,10 @@ Shader "Custom/PlanetHeightShader"
     Properties
     {
         _WaterRadius ("Water Radius", Float) = 20
-        _TerrainColor ("Terrain Color", Color) = (1,1,1,1)
-        _WaterColor ("Water Color", Color) = (1,1,1,1)
+        _MountainRadius ("Mountain Radius", Float) = 30
+        _WaterColor ("Water Color", Color) = (0, 0, 1, 1)
+        _TerrainColor ("Terrain Color", Color) = (0, 1, 0, 1)
+        _MountainColor ("Mountain Color", Color) = (0.3, 0.3, 0.3, 1)
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
     }
@@ -22,17 +24,20 @@ Shader "Custom/PlanetHeightShader"
 
         struct Input {
             float3 worldPos;
+            float3 normal;
         };
 
         fixed4 _TerrainColor;
+        fixed4 _MountainColor;
         fixed4 _WaterColor;
         float _WaterRadius;
+        float _MountainRadius;
         half _Glossiness;
         half _Metallic;
 
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
-            fixed4 c = length(IN.worldPos - float3(0, 0, 0)) > _WaterRadius + 0.1 ? _TerrainColor : _WaterColor;
+            fixed4 c = length(IN.worldPos) > _WaterRadius + 0.1 ? lerp(_TerrainColor, _MountainColor, clamp((length(IN.worldPos) - _MountainRadius) * 0.1, 0, 1)) : _WaterColor;
             
             o.Albedo = c.rgb;
             o.Alpha = c.a;

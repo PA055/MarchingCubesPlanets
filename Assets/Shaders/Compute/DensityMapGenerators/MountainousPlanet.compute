@@ -43,9 +43,10 @@ void GetDensityMap(uint3 id : SV_DispatchThreadID) {
 	float fudge = 0.1339748f * planetRadius;
 	float density = length(pos) / (maxD + fudge) - 0.5;
     float noise = fbm(6, 2, 0.5, noiseScale, (pos / length(pos)) * planetRadius * noiseFrequency) * heightMultiplier;
+    noise = pow(noise, 3.0f);
 
+    density += noise;
     if (noise < 0) {
-        density += noise;
     }
     densityMap[id] = density;
 }

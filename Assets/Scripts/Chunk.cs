@@ -99,7 +99,6 @@ public class Chunk : MonoBehaviour
 
     void Create3DTexture(ref RenderTexture texture, int size, string name) { 
         var format = SystemInfo.GetCompatibleFormat(UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat, UnityEngine.Experimental.Rendering.FormatUsage.SetPixels);
-        Debug.LogWarning(format.ToString());
 		if (texture == null || !texture.IsCreated() || texture.width != size || texture.height != size || texture.volumeDepth != size || texture.graphicsFormat != format)
 		{
 			//Debug.Log ("Create tex: update noise: " + updateNoise);

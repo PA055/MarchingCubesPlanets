@@ -47,6 +47,7 @@ public class PlayerController : MonoBehaviour
         r.useGravity = false;
         r.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rotation.y = transform.eulerAngles.y;
+        rotation.x = transform.eulerAngles.x;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -64,10 +65,14 @@ public class PlayerController : MonoBehaviour
         }
 
         // Player and Camera rotation
-        rotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
+        rotation.x -= Input.GetAxis("Mouse Y") * lookSpeed * Time.deltaTime;
         rotation.x = Mathf.Clamp(rotation.x, -lookXLimit, lookXLimit);
-        rotation.y = Input.GetAxis("Mouse X") * lookSpeed;
-        playerCamera.transform.localRotation = Quaternion.Euler(rotation.x, 0, 0);
+
+        rotation.y = Input.GetAxis("Mouse X") * lookSpeed * Time.deltaTime;
+
+        // Debug.Log(new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")));
+
+        playerCamera.transform.localRotation = Quaternion.Euler(rotation.x, 0f, 0f);
         Quaternion localRotation = Quaternion.Euler(0f, rotation.y, 0f);
         transform.rotation = transform.rotation * localRotation;
 
@@ -191,7 +196,7 @@ public class PlayerController : MonoBehaviour
                 r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
             }
         }
-    }
+        }
 
     void LateUpdate() {
         if (Physics.Raycast(transform.position, -transform.up, 0.5f, terrainMask))
