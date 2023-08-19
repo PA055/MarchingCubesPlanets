@@ -52,5 +52,7 @@
         "temp/":true,
         "Temp/":true
     },
-    "diffEditor.codeLens": true
+    "omnisharp.projectLoadTimeout": 600,
+    "diffEditor.codeLens": true,
+    "dotnet.defaultSolution": "MarchingCubesTest.sln"
 }

@@ -93,10 +93,10 @@ public class PlayerController : MonoBehaviour
         //     }
         // }
 
-        // if (terraTest) {
-        //     terraTest = false;
-        //     TerraTest();
-        // }
+        if (terraTest) {
+            terraTest = false;
+            TerraTest();
+        }
     }
 
     void TerraTest() {
