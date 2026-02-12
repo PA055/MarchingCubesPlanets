@@ -42,7 +42,7 @@ public class TerraformingCamera : MonoBehaviour {
         }
     }
 
-    public void Terraform(bool add) {       
+    public void Terraform(bool add) {
         RaycastHit hit;
 
         if (Physics.Raycast(_cam.ScreenPointToRay(Input.mousePosition), out hit, 1000)) {

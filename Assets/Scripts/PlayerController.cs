@@ -64,34 +64,36 @@ public class PlayerController : MonoBehaviour
         }
 
         // Player and Camera rotation
-        rotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
+        float mouseX = Input.GetAxis("Mouse X") * lookSpeed;
+        float mouseY = Input.GetAxis("Mouse Y") * lookSpeed;
+        rotation.x -= mouseY;
         rotation.x = Mathf.Clamp(rotation.x, -lookXLimit, lookXLimit);
-        rotation.y = Input.GetAxis("Mouse X") * lookSpeed;
-        playerCamera.transform.localRotation = Quaternion.Euler(rotation.x, 0, 0);
-        Quaternion localRotation = Quaternion.Euler(0f, rotation.y, 0f);
-        transform.rotation = transform.rotation * localRotation;
+        rotation.y += mouseX;
+        playerCamera.transform.localRotation = Quaternion.Euler(rotation.x, 0f, 0f);
+        transform.rotation = Quaternion.Euler(0f, rotation.y, 0f);
+        // transform.rotation = transform.rotation;
 
-        // RaycastHit hitInfo;
-        // if (Input.GetMouseButton(0)) {
-        //     if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
-        //         world.Terraform(hitInfo.point, brushSize, brushWeight);
-        //         if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
-        //             terraTest = true;
-        //     }
-        // }
+        RaycastHit hitInfo;
+        if (Input.GetMouseButton(0)) {
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
+                world.Terraform(hitInfo.point, brushSize, brushWeight);
+                if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
+                    terraTest = true;
+            }
+        }
 
-        // if (Input.GetMouseButton(1)) {
-        //     if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
-        //         world.Terraform(hitInfo.point, brushSize, -brushWeight);
-        //         if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
-        //             terraTest = true;
-        //     }
-        // }
+        if (Input.GetMouseButton(1)) {
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hitInfo, 100.0f, terrainMask)) {
+                world.Terraform(hitInfo.point, brushSize, -brushWeight);
+                if ((hitInfo.point - transform.position).magnitude <= brushSize * 2)
+                    terraTest = true;
+            }
+        }
 
-        // if (terraTest) {
-        //     terraTest = false;
-        //     TerraTest();
-        // }
+        if (terraTest) {
+            terraTest = false;
+            TerraTest();
+        }
     }
 
     void TerraTest() {
@@ -122,7 +124,8 @@ public class PlayerController : MonoBehaviour
             Vector3 toCenter = planetCenter - transform.position;
             toCenter.Normalize();
 
-            r.AddForce(toCenter * gravity, ForceMode.Acceleration);
+            // no gravity for demo
+            // r.AddForce(toCenter * gravity, ForceMode.Acceleration);
 
             if (alignToPlanet) {
                 Quaternion q = Quaternion.FromToRotation(transform.up, -toCenter);
@@ -136,7 +139,7 @@ public class PlayerController : MonoBehaviour
 
             // Calculate how fast we should be moving
 
-            Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+            Vector3 velocity = transform.InverseTransformDirection(r.linearVelocity);
             velocity.y = 0;
             velocity = transform.TransformDirection(velocity);
             Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
@@ -146,10 +149,12 @@ public class PlayerController : MonoBehaviour
             velocityChange = transform.TransformDirection(velocityChange);
 
             r.AddForce(velocityChange, ForceMode.VelocityChange);
+            transform.position = 520 * (transform.position - planetCenter).normalized;
 
-            if (Input.GetButton("Jump") && canJump && grounded) {
-                r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
-            }
+            // if (Input.GetButton("Jump") && canJump && grounded) {
+            //     r.AddForce(transform.up * jumpHeight, ForceMode.VelocityChange);
+            // }
+
         
         }
 
@@ -159,7 +164,7 @@ public class PlayerController : MonoBehaviour
             Vector3 upDir = playerCamera.transform.up.normalized;
             Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal") + upDir * Input.GetAxis("Elevation")) * speed;
 
-            Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+            Vector3 velocity = transform.InverseTransformDirection(r.linearVelocity);
             velocity = transform.TransformDirection(velocity);
             Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);
             velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
@@ -177,7 +182,7 @@ public class PlayerController : MonoBehaviour
             Vector3 rightDir = playerCamera.transform.right.normalized;
             Vector3 targetVelocity = (forwardDir * Input.GetAxis("Vertical") + rightDir * Input.GetAxis("Horizontal")) * speed;
             
-            Vector3 velocity = transform.InverseTransformDirection(r.velocity);
+            Vector3 velocity = transform.InverseTransformDirection(r.linearVelocity);
             velocity.y = 0;
             velocity = transform.TransformDirection(velocity);
             Vector3 velocityChange = transform.InverseTransformDirection(targetVelocity - velocity);

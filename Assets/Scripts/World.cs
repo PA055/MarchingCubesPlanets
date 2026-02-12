@@ -179,33 +179,41 @@ public class World : MonoBehaviour
     }
 
     public void Terraform(Vector3 point, float radius, float weight) {
-        timer_terraformingTime.Start();
-        
-        Point[] points = GetChunksOfPoint(point + (Vector3) Constants.CornerTable[0] * radius)
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[1] * radius))
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[2] * radius))
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[3] * radius))
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[4] * radius))
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[5] * radius))
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[6] * radius))
-                  .Union(GetChunksOfPoint(point + (Vector3) Constants.CornerTable[7] * radius))
-                  .Union(GetChunksOfPoint(point + Vector3.up * radius))
-                  .Union(GetChunksOfPoint(point + Vector3.down * radius))
-                  .Union(GetChunksOfPoint(point + Vector3.left * radius))
-                  .Union(GetChunksOfPoint(point + Vector3.right * radius))
-                  .Union(GetChunksOfPoint(point + Vector3.forward * radius))
-                  .Union(GetChunksOfPoint(point + Vector3.back * radius))
-                  .ToArray();
-        
-        foreach(Point p in points) {
-            if (!chunks.ContainsKey(p.chunkIndex))
-                GenerateChunk(p.chunkIndex);
-            chunks[p.chunkIndex].Terraform(p.point, radius, weight);
-        }
+		timer_terraformingTime.Start();
 
-        timer_terraformingTime.Stop();
-        terraformingAverage = ((terraformingAverage * numTerraformCalls) + timer_terraformingTime.ElapsedMilliseconds) / (numTerraformCalls + 1);
-        numTerraformCalls++;
+		Vector3 minWorld = point - Vector3.one * radius;
+		Vector3 maxWorld = point + Vector3.one * radius;
+		Vector3Int minChunk = new Vector3Int(
+			Mathf.FloorToInt(minWorld.x / chunkSize),
+			Mathf.FloorToInt(minWorld.y / chunkSize),
+			Mathf.FloorToInt(minWorld.z / chunkSize)
+		);
+		Vector3Int maxChunk = new Vector3Int(
+			Mathf.FloorToInt(maxWorld.x / chunkSize),
+			Mathf.FloorToInt(maxWorld.y / chunkSize),
+			Mathf.FloorToInt(maxWorld.z / chunkSize)
+		);
+
+		for (int cx = minChunk.x; cx <= maxChunk.x; cx++) {
+			for (int cy = minChunk.y; cy <= maxChunk.y; cy++) {
+				for (int cz = minChunk.z; cz <= maxChunk.z; cz++) {
+					Vector3Int chunkCoord = new Vector3Int(cx, cy, cz);
+					if (!chunks.ContainsKey(chunkCoord)) {
+						GenerateChunk(chunkCoord);
+					}
+					Vector3 localPoint = new Vector3(
+						point.x - chunkCoord.x * chunkSize,
+						point.y - chunkCoord.y * chunkSize,
+						point.z - chunkCoord.z * chunkSize
+					);
+					chunks[chunkCoord].Terraform(localPoint, radius, weight);
+				}
+			}
+		}
+
+		timer_terraformingTime.Stop();
+		terraformingAverage = ((terraformingAverage * numTerraformCalls) + timer_terraformingTime.ElapsedMilliseconds) / (numTerraformCalls + 1);
+		numTerraformCalls++;
     }
 }
 
